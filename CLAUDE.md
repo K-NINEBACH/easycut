@@ -29,6 +29,21 @@ npm run dist:win         # NSIS 설치 파일 (Windows에서 실행)
 - 배포 시 `resources/*` 는 electron-builder `extraResources` 로 `process.resourcesPath` 아래에 복사.
 - `resources/bin/*`, `resources/models/*.bin` 은 git 에 넣지 않는다.
 
+## 테스트
+```
+npm test                       # 단위 테스트 (vitest)
+node scripts/make-fixtures.mjs # 테스트 샘플 생성 (시스템 ffmpeg 필요)
+npm run test:integration       # 실제 ffmpeg 통합 테스트
+npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, 리눅스는 xvfb-run)
+```
+
 ## 진행 상황
 - [x] M0 프로젝트 셋업
-- [ ] M1 미디어 불러오기
+- [x] M1 미디어 불러오기
+- [x] M2 타임라인 기본 (timeline.ts, ops.ts, Undo/Redo, 자동 저장, 재연결)
+- [ ] M3 미리보기 — 엔진·WebGL·재생 구현됨. 남은 일: tests/e2e/m3-preview.mjs 의 클립 경계 멈춤 측정을
+      <video> currentTime 진행 기준으로 바꾸기 (GPU 없는 환경은 화면 갱신이 느려 캔버스 비교가 부정확)
+- [ ] M4 자르기·나누기·속도 (TrimHandles.tsx 는 아직 빈 자리)
+- [ ] M5 최소 렌더
+- [ ] M6 필터 (Preview/luts.ts 자리 있음) / M7 전환 (shaders.ts 에 xfade 수식 구현됨) / M8 음악 / M9 자막
+- [ ] M10 마감

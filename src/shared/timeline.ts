@@ -171,4 +171,12 @@ export function clipFrameCounts(layout: TimelineLayout, fps: number): number[] {
   return layout.clips.map((c) => Math.max(1, toFrame(c.end, fps) - toFrame(c.start, fps)));
 }
 
+/** 렌더용: clips[i] 와 clips[i+1] 이 전환으로 겹치는 프레임 수 (컷이면 0). 길이 = 장면 수 - 1 */
+export function transitionFrameOverlaps(layout: TimelineLayout, fps: number): number[] {
+  return layout.clips.slice(0, -1).map((c, i) => {
+    if (!(layout.transitions[i]?.duration ?? 0)) return 0;
+    return Math.max(0, toFrame(c.end, fps) - toFrame(layout.clips[i + 1].start, fps));
+  });
+}
+
 export { IMAGE_DEFAULT_DURATION };

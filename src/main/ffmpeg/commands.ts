@@ -171,9 +171,7 @@ export function buildClipCommand(
   args.push(
     '-filter_complex', `${video};${audio}`,
     '-map', '[v]', '-map', '[a]',
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '16', '-pix_fmt', 'yuv420p', '-r', String(fps),
-    ...SDR_TAGS,
-    '-c:a', 'pcm_s16le', '-ar', String(AUDIO_RATE), '-ac', '2',
+    ...INTERMEDIATE_OUT(fps),
     '-f', 'mov', output
   );
   return args;
@@ -184,10 +182,72 @@ export function buildConcatList(paths: string[]): string {
   return paths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n') + '\n';
 }
 
-/** 2·3단계: 중간 파일을 이어 붙여 최종 인코딩 (PRD 9.2, 9.3) */
-export function buildFinalCommand(listPath: string, output: string, fmt: RenderFormat): string[] {
+export interface ChainInput {
+  path: string;
+  frames: number;
+}
+
+export interface ChainJoin {
+  /** FFmpeg xfade 이름. null 이면 컷 */
+  xfade: string | null;
+  /** 겹치는 프레임 수 (timeline.transitionFrameOverlaps) */
+  overlapFrames: number;
+}
+
+const INTERMEDIATE_OUT = (fps: number): string[] => [
+  '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '16', '-pix_fmt', 'yuv420p', '-r', String(fps),
+  ...SDR_TAGS,
+  '-c:a', 'pcm_s16le', '-ar', String(AUDIO_RATE), '-ac', '2'
+];
+
+/** 이어 붙인 결과 길이 (프레임) */
+export function chainFrames(inputs: ChainInput[], joins: ChainJoin[]): number {
+  return inputs.reduce((a, x) => a + x.frames, 0) - joins.reduce((a, j) => a + (j.xfade ? j.overlapFrames : 0), 0);
+}
+
+/**
+ * 2단계: 같은 규격의 중간 파일들을 컷(concat) 또는 전환(xfade + acrossfade)으로 잇는다 (PRD 9.2).
+ * xfade 는 두 입력의 시간 단위·프레임레이트가 같아야 해서 매 단계 뒤에 fps 를 다시 건다.
+ */
+export function buildChainCommand(inputs: ChainInput[], joins: ChainJoin[], fmt: RenderFormat, output: string): string[] {
+  const { fps } = fmt;
+  const args: string[] = [];
+  for (const x of inputs) args.push('-i', x.path);
+  const f: string[] = inputs.map((_, i) => `[${i}:v]fps=${fps}[v${i}]`);
+  let v = 'v0';
+  let a = '0:a';
+  let length = inputs[0].frames;
+  for (let i = 1; i < inputs.length; i++) {
+    const j = joins[i - 1];
+    const nv = `x${i}`;
+    const na = `y${i}`;
+    if (j.xfade && j.overlapFrames > 0) {
+      const o = j.overlapFrames;
+      f.push(
+        `[${v}][v${i}]xfade=transition=${j.xfade}:duration=${(o / fps).toFixed(6)}:offset=${((length - o) / fps).toFixed(6)},fps=${fps}[${nv}]`,
+        `[${a}][${i}:a]acrossfade=ns=${Math.round((o * AUDIO_RATE) / fps)}:c1=tri:c2=tri[${na}]`
+      );
+      length += inputs[i].frames - o;
+    } else {
+      f.push(`[${v}][v${i}]concat=n=2:v=1:a=0,fps=${fps}[${nv}]`, `[${a}][${i}:a]concat=n=2:v=0:a=1[${na}]`);
+      length += inputs[i].frames;
+    }
+    v = nv;
+    a = na;
+  }
+  args.push('-filter_complex', f.join(';'), '-map', `[${v}]`, '-map', inputs.length > 1 ? `[${a}]` : '0:a', ...INTERMEDIATE_OUT(fps), '-f', 'mov', output);
+  return args;
+}
+
+/** 전환이 하나도 없으면 다시 인코딩하지 않고 그대로 이어 붙인다 */
+export function buildConcatCopyCommand(listPath: string, output: string): string[] {
+  return ['-f', 'concat', '-safe', '0', '-i', listPath, '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy', '-f', 'mov', output];
+}
+
+/** 3단계: 최종 인코딩 (PRD 9.3). 자막·음악은 M8·M9 에서 */
+export function buildFinalCommand(input: string, output: string, fmt: RenderFormat): string[] {
   return [
-    '-f', 'concat', '-safe', '0', '-i', listPath,
+    '-i', input,
     '-map', '0:v:0', '-map', '0:a:0',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
     '-r', String(fmt.fps),

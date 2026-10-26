@@ -10,6 +10,7 @@ import {
   moveClipsTo,
   moveSubtitle,
   setClipAudio,
+  setTransition,
   setImageDuration,
   setSpeed,
   splitClip,
@@ -233,5 +234,64 @@ describe('자막 배치', () => {
     expect(clampSubtitleSpan(ranges, 'new', 1, 3, 20)).toEqual({ start: 3, duration: 2 });
     expect(clampSubtitleSpan(ranges, 'new', 8, 3, 20)).toEqual({ start: 8, duration: 3 });
     expect(clampSubtitleSpan(ranges, 'new', 4.9, 3, 20)).toBeNull();
+  });
+});
+
+describe('장면 전환 (PRD F6)', () => {
+  const start = produce(base(), (d) => {
+    insertMedia(d, ['v1', 'v2', 'v1']);
+    d.subtitles.push({ id: 's', text: '자막', anchorClipId: d.videoTrack[2].id, offset: 1, duration: 1 });
+  });
+  const [a, b, c] = start.videoTrack.map((x) => x.id);
+
+  it('넣으면 전체 길이가 전환만큼 줄고, 뒤 장면의 자막도 그만큼 앞으로', () => {
+    const before = layoutTimeline(start.videoTrack, start.transitions);
+    const p = produce(start, (d) => {
+      expect(setTransition(d, [b], 'fade', 0.6)).toBe(0);
+    });
+    const after = layoutTimeline(p.videoTrack, p.transitions);
+    expect(after.total).toBeCloseTo(before.total - 0.6, 6);
+    expect(subtitleRange(after, p.subtitles[0]).start).toBeCloseTo(subtitleRange(before, start.subtitles[0]).start - 0.6, 6);
+    // 다시 '없음' 이면 원래대로
+    const q = produce(p, (d) => {
+      setTransition(d, [b], 'none', 0.6);
+    });
+    expect(q.transitions).toEqual([]);
+    expect(subtitleRange(layoutTimeline(q.videoTrack, q.transitions), q.subtitles[0]).start).toBeCloseTo(
+      subtitleRange(before, start.subtitles[0]).start,
+      6
+    );
+  });
+
+  it('모든 장면에 적용: 마지막 장면 뒤는 빼고, 같은 곳은 바꿔치기', () => {
+    const p = produce(start, (d) => {
+      setTransition(d, [a], 'fade', 0.3);
+      setTransition(d, [a, b, c], 'slideleft', 1);
+    });
+    expect(p.transitions.map((t) => [t.afterClipId, t.type, t.duration])).toEqual([
+      [a, 'slideleft', 1],
+      [b, 'slideleft', 1]
+    ]);
+  });
+
+  it('장면이 너무 짧으면 넣지 못한 수를 알려줌', () => {
+    const p = produce(base(), (d) => {
+      insertMedia(d, ['v1', 'v2']);
+      trimClip(d, d.videoTrack[0].id, 0, 0.5);
+    });
+    let failed = -1;
+    produce(p, (d) => {
+      failed = setTransition(d, [d.videoTrack[0].id], 'fade', 1);
+    });
+    // 0.5초 장면: 최대 0.25초까지 줄일 수 있으니 넣을 수 있음
+    expect(failed).toBe(0);
+    const q = produce(base(), (d) => {
+      insertMedia(d, ['v1', 'v2']);
+      d.videoTrack[0].outPoint = 0.15;
+    });
+    produce(q, (d) => {
+      failed = setTransition(d, [d.videoTrack[0].id], 'fade', 1);
+    });
+    expect(failed).toBe(1);
   });
 });

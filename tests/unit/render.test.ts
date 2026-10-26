@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildClipCommand, buildConcatList, buildFinalCommand, fitFilter } from '../../src/main/ffmpeg/commands';
-import { clipFrameCounts, layoutTimeline } from '../../src/shared/timeline';
+import { buildChainCommand, buildClipCommand, buildConcatList, buildFinalCommand, chainFrames, fitFilter } from '../../src/main/ffmpeg/commands';
+import { clipFrameCounts, layoutTimeline, transitionFrameOverlaps } from '../../src/shared/timeline';
 import type { MediaItem, VideoClip } from '../../src/shared/types';
 
 const video: MediaItem = {
@@ -81,7 +81,7 @@ describe('렌더 명령 (PRD 9.1)', () => {
   });
 
   it('최종 인코딩: H.264 High + AAC 192k + faststart (스냅샷)', () => {
-    expect(buildFinalCommand('D:\\cache\\list.txt', 'D:\\내 동영상\\여행.mp4', fmt)).toMatchSnapshot();
+    expect(buildFinalCommand('D:\\cache\\joined.mov', 'D:\\내 동영상\\여행.mp4', fmt)).toMatchSnapshot();
   });
 
   it('이어 붙이기 목록: 한글·공백·작은따옴표 경로', () => {
@@ -99,5 +99,39 @@ describe('장면별 프레임 수', () => {
     const frames = clipFrameCounts(layout, 30);
     expect(frames.reduce((a, b) => a + b, 0)).toBe(Math.round(layout.total * 30));
     expect(new Set(frames)).toEqual(new Set([30, 31]));
+  });
+});
+
+describe('전환으로 잇기 (PRD 9.2)', () => {
+  it('겹치는 프레임 수: 전환 길이만큼, 컷은 0', () => {
+    const clips = [clip({ id: 'a', inPoint: 0, outPoint: 3 }), clip({ id: 'b', inPoint: 0, outPoint: 3 }), clip({ id: 'c', inPoint: 0, outPoint: 3 })];
+    const layout = layoutTimeline(clips, [{ afterClipId: 'a', type: 'fade', duration: 0.6 }]);
+    expect(transitionFrameOverlaps(layout, 30)).toEqual([18, 0]);
+    const frames = clipFrameCounts(layout, 30);
+    expect(frames).toEqual([90, 90, 90]);
+    expect(chainFrames(frames.map((f) => ({ path: '', frames: f })), [{ xfade: 'fade', overlapFrames: 18 }, { xfade: null, overlapFrames: 0 }])).toBe(
+      Math.round(layout.total * 30)
+    );
+  });
+
+  it('xfade offset = 앞까지 길이 − 겹침, 소리는 acrossfade, 컷은 concat (스냅샷)', () => {
+    const args = buildChainCommand(
+      [
+        { path: 'c0.mov', frames: 90 },
+        { path: 'c1.mov', frames: 90 },
+        { path: 'c2.mov', frames: 60 }
+      ],
+      [
+        { xfade: null, overlapFrames: 0 },
+        { xfade: 'slideleft', overlapFrames: 18 }
+      ],
+      fmt,
+      'joined.mov'
+    );
+    const f = args[args.indexOf('-filter_complex') + 1];
+    expect(f).toContain('[v0][v1]concat=n=2:v=1:a=0,fps=30[x1]');
+    expect(f).toContain('[x1][v2]xfade=transition=slideleft:duration=0.600000:offset=5.400000,fps=30[x2]');
+    expect(f).toContain('[y1][2:a]acrossfade=ns=28800:c1=tri:c2=tri[y2]');
+    expect(args).toMatchSnapshot();
   });
 });

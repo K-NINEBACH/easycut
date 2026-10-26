@@ -1,6 +1,6 @@
 // 프로젝트 편집 동작 (순수 함수, Immer draft 에 직접 적용). 렌더러 store 와 테스트에서 사용.
 // 클립을 옮기거나 지우거나 자를 때 전환·자막이 같이 따라가도록 여기서 한 번에 처리한다.
-import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, Project, Speed, Subtitle, VideoClip } from './types';
+import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, Project, Speed, Subtitle, TransitionId, VideoClip } from './types';
 import { IMAGE_DEFAULT_DURATION, MIN_CLIP_LENGTH } from './types';
 import { clipLength, isImageClip, layoutMusic, layoutTimeline } from './timeline';
 
@@ -146,6 +146,20 @@ export function setLook(
       }
     }
   }
+}
+
+/**
+ * 장면 전환 (PRD F6). afterClipIds 의 각 장면 뒤에 같은 전환을 넣는다 ([모든 장면에 적용]은 마지막 장면 빼고 전부).
+ * 'none' 이면 지운다. 반환: 장면이 너무 짧아 넣지 못한 곳의 수
+ */
+export function setTransition(p: Project, afterClipIds: string[], type: TransitionId, duration: number): number {
+  const last = p.videoTrack[p.videoTrack.length - 1]?.id;
+  const ids = new Set(afterClipIds.filter((id) => id !== last && p.videoTrack.some((c) => c.id === id)));
+  p.transitions = p.transitions.filter((t) => !ids.has(t.afterClipId));
+  if (type === 'none') return 0;
+  for (const id of ids) p.transitions.push({ afterClipId: id, type, duration });
+  const layout = layoutTimeline(p.videoTrack, p.transitions);
+  return layout.transitions.filter((t) => t && ids.has(t.afterClipId) && t.tooShort).length;
 }
 
 /** 화면 맞춤: 흐린 배경 / 검은 배경 / 꽉 채우기 (PRD F2) */

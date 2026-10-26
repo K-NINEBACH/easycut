@@ -8,6 +8,7 @@ import { MediaService } from '../../src/main/services/MediaService';
 import { RenderService } from '../../src/main/services/RenderService';
 import { insertMedia, setLook, setSpeed, trimClip, setClipAudio } from '../../src/shared/ops';
 import { FILTERS } from '../../src/shared/filters';
+import { TRANSITIONS } from '../../src/shared/transitions';
 import { newProject } from '../../src/shared/project';
 import { layoutTimeline } from '../../src/shared/timeline';
 import type { JobDone, JobProgress, Project } from '../../src/shared/types';
@@ -119,6 +120,34 @@ describe('영상 만들기 (컷 편집)', () => {
     for (let i = 0; i < raw.length; i += 3) maxDiff = Math.max(maxDiff, Math.abs(raw[i] - raw[i + 1]), Math.abs(raw[i + 1] - raw[i + 2]));
     expect(maxDiff).toBeLessThanOrEqual(4);
   }, 300_000);
+
+  it('전환 10종 + 장면 18개(묶음 처리) + 해상도·fps 가 다른 장면 사이 전환', async () => {
+    const types = TRANSITIONS.map((t) => t.id).filter((t) => t !== 'none');
+    const many = produce(project, (d) => {
+      // 가로·세로·사진·VFR·HDR 를 섞어 1.5초씩 18개
+      const src = d.videoTrack.slice(0, 6);
+      d.videoTrack = Array.from({ length: 18 }, (_, i) => {
+        const c = { ...src[i % 6], id: `clip${i}` };
+        if (c.imageDuration !== undefined) return { ...c, imageDuration: 1.5, outPoint: 1.5 };
+        return { ...c, inPoint: 0.5, outPoint: 0.5 + 1.5 * c.speed };
+      });
+      // 앞 9곳은 10종 중 9종, 16번째 뒤(묶음 경계)는 zoomin, 나머지는 컷·fade
+      d.transitions = d.videoTrack.slice(0, -1).flatMap((c, i) =>
+        i < 9 ? [{ afterClipId: c.id, type: types[i], duration: 0.6 }]
+        : i === 15 ? [{ afterClipId: c.id, type: 'zoomin' as const, duration: 1.0 }]
+        : i % 2 ? [{ afterClipId: c.id, type: 'fade' as const, duration: 0.3 }] : []
+      );
+    });
+    const out = join(root, '전환.mp4');
+    const r = await finished(render.start({ project: many, outputPath: out, quality: '720p', fps: 30, subtitleMode: 'burn' }));
+    expect(r.error).toBeUndefined();
+    const expected = layoutTimeline(many.videoTrack, many.transitions).total;
+    expect(expected).toBeLessThan(18 * 1.5 - 9 * 0.6);
+    const f = probeFormat(out);
+    expect(Math.abs(f.duration - expected)).toBeLessThanOrEqual(0.1);
+    const aDur = Number((probeStream(out, 'a:0') as unknown as { duration: string }).duration);
+    expect(Math.abs(aDur - expected)).toBeLessThanOrEqual(0.1);
+  }, 400_000);
 
   it('원본이 없으면 쉬운 안내', async () => {
     const broken = produce(project, (d) => {

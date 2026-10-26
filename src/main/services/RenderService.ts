@@ -1,25 +1,33 @@
-// 영상 만들기 (PRD F9, 9장). M5: 전환·필터·자막·음악 없이 컷 편집만.
-// 1단계 장면별 중간 파일 → 2·3단계 이어 붙여 최종 인코딩.
+// 영상 만들기 (PRD F9, 9장).
+// 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 최종 인코딩. (자막·음악은 M8·M9)
 import { existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, extname, join } from 'node:path';
 import type { MediaItem, RenderOptions } from '@shared/types';
 import { bakeLut, isIdentityLook, lookOf, lutToCube } from '@shared/filters';
-import { clipFrameCounts, layoutTimeline } from '@shared/timeline';
+import { clipFrameCounts, layoutTimeline, transitionFrameOverlaps } from '@shared/timeline';
+import { TRANSITION_BY_ID } from '@shared/transitions';
 import { weightedProgress } from '../ffmpeg/progress';
 import { runFfmpeg } from '../ffmpeg/run';
 import {
   RENDER_SIZES,
+  buildChainCommand,
   buildClipCommand,
+  buildConcatCopyCommand,
   buildConcatList,
   buildFinalCommand,
+  chainFrames,
+  type ChainInput,
+  type ChainJoin,
   type RenderFormat
 } from '../ffmpeg/commands';
 import { JobQueue, type JobContext, type JobEvents } from './JobQueue';
 import { mapLimit, type Tools } from './MediaService';
 
-/** 단계별 진행률 가중치: 장면 처리 / 이어 붙여 인코딩 (PRD 9.3 의 2·3단계를 M5 에서는 한 번에) */
-const WEIGHTS = [60, 40];
+/** 단계별 진행률 가중치 (PRD 9.3): 장면 처리 / 잇기 / 최종 인코딩 */
+const WEIGHTS = [60, 20, 20];
+/** 한 번에 잇는 장면 수. 넘으면 묶음별로 먼저 잇고 묶음끼리 다시 잇는다 (PRD 9.2) */
+export const CHAIN_GROUP = 16;
 /** 장면 동시 처리 개수 (PRD 9.1) */
 const CLIP_CONCURRENCY = 2;
 
@@ -66,11 +74,13 @@ export class RenderService {
     });
 
     const fmt: RenderFormat = { ...RENDER_SIZES[opts.quality], fps: opts.fps };
-    // M7 전에는 전환 없이 이어 붙인다
-    const layout = layoutTimeline(project.videoTrack, []);
+    const layout = layoutTimeline(project.videoTrack, project.transitions);
     const frames = clipFrameCounts(layout, fmt.fps);
     const totalFrames = frames.reduce((a, b) => a + b, 0);
-    const totalSec = totalFrames / fmt.fps;
+    const joins: ChainJoin[] = transitionFrameOverlaps(layout, fmt.fps).map((o, i) => {
+      const t = layout.transitions[i];
+      return { xfade: t && o > 0 ? TRANSITION_BY_ID[t.type].xfade : null, overlapFrames: o };
+    });
 
     const work = join(root, 'render', ctx.jobId);
     await mkdir(work, { recursive: true });
@@ -82,7 +92,7 @@ export class RenderService {
       const progress = weightedProgress(WEIGHTS, stage, fraction);
       const elapsed = (Date.now() - started) / 1000;
       const etaSeconds = progress > 0.03 ? Math.round((elapsed / progress) * (1 - progress)) : undefined;
-      ctx.progress(progress, { etaSeconds, clipIndex, message: stage === 0 ? '장면 준비 중' : '영상으로 묶는 중' });
+      ctx.progress(progress, { etaSeconds, clipIndex, message: ['장면 준비 중', '장면 잇는 중', '마무리 중'][stage] });
     };
 
     try {
@@ -117,17 +127,21 @@ export class RenderService {
         return out;
       });
 
-      // 2·3단계: 이어 붙여 최종 인코딩
-      const listPath = join(work, 'list.txt');
-      await writeFile(listPath, buildConcatList(parts));
+      // 2단계: 잇기
       report(1, 0);
-      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(listPath, outputPath, fmt), {
+      const joined = join(work, 'joined.mov');
+      const inputs: ChainInput[] = parts.map((path, i) => ({ path, frames: frames[i] }));
+      const joinedFrames = await this.chain(inputs, joins, fmt, joined, work, ctx, logPath, (f) => report(1, f));
+
+      // 3단계: 최종 인코딩
+      report(2, 0);
+      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, outputPath, fmt), {
         signal: ctx.signal,
         logPath,
-        durationSec: totalSec,
-        onProgress: (f) => report(1, f)
+        durationSec: joinedFrames / fmt.fps,
+        onProgress: (f) => report(2, f)
       });
-      report(1, 1);
+      report(2, 1);
       return { outputPath };
     } catch (err) {
       // 취소·실패 시 만들다 만 결과 파일은 지운다
@@ -136,5 +150,54 @@ export class RenderService {
     } finally {
       await rm(work, { recursive: true, force: true }).catch(() => {});
     }
+  }
+
+  /** 중간 파일들을 하나로 잇는다. 전환이 없으면 다시 인코딩하지 않음, 많으면 묶음 단위로. 반환: 결과 프레임 수 */
+  private async chain(
+    inputs: ChainInput[],
+    joins: ChainJoin[],
+    fmt: RenderFormat,
+    output: string,
+    work: string,
+    ctx: JobContext,
+    logPath: string | undefined,
+    onProgress: (f: number) => void
+  ): Promise<number> {
+    const total = chainFrames(inputs, joins);
+    const run = (args: string[], frames: number, done: number): Promise<void> =>
+      runFfmpeg(this.tools.ffmpeg, args, {
+        signal: ctx.signal,
+        logPath,
+        durationSec: frames / fmt.fps,
+        onProgress: (f) => onProgress(Math.min(1, (done + f * frames) / (total * 2)))
+      });
+
+    if (joins.every((j) => !j.xfade)) {
+      const listPath = join(work, 'list.txt');
+      await writeFile(listPath, buildConcatList(inputs.map((x) => x.path)));
+      await run(buildConcatCopyCommand(listPath, output), total, 0);
+      return total;
+    }
+    if (inputs.length <= CHAIN_GROUP) {
+      await run(buildChainCommand(inputs, joins, fmt, output), total, total);
+      return total;
+    }
+    // 묶음별로 잇고, 묶음 경계의 전환으로 묶음끼리 다시 잇는다
+    const groups: ChainInput[] = [];
+    const groupJoins: ChainJoin[] = [];
+    let done = 0;
+    for (let g = 0; g * CHAIN_GROUP < inputs.length; g++) {
+      const from = g * CHAIN_GROUP;
+      const part = inputs.slice(from, from + CHAIN_GROUP);
+      const partJoins = joins.slice(from, from + part.length - 1);
+      const frames = chainFrames(part, partJoins);
+      const path = join(work, `group_${String(g).padStart(3, '0')}.mov`);
+      await run(buildChainCommand(part, partJoins, fmt, path), frames, done);
+      done += frames;
+      groups.push({ path, frames });
+      if (from + CHAIN_GROUP < inputs.length) groupJoins.push(joins[from + CHAIN_GROUP - 1]);
+    }
+    await run(buildChainCommand(groups, groupJoins, fmt, output), total, total);
+    return total;
   }
 }

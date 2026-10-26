@@ -40,6 +40,11 @@ const api = {
     start: (opts: RenderOptions): Promise<{ jobId: string }> => ipcRenderer.invoke(IpcChannel.RenderStart, opts),
     logPath: (): Promise<string | null> => ipcRenderer.invoke(IpcChannel.RenderLogPath)
   },
+  subtitle: {
+    /** 저장 위치를 고르게 한 뒤 저장. 취소하면 null */
+    saveSrt: (name: string, content: string): Promise<string | null> =>
+      ipcRenderer.invoke(IpcChannel.SubtitleSaveSrt, name, content)
+  },
   jobs: {
     cancel: (jobId: string): Promise<void> => ipcRenderer.invoke(IpcChannel.JobsCancel, jobId),
     onProgress: (cb: (e: JobProgress) => void): (() => void) => subscribe(IpcChannel.JobsProgress, cb),

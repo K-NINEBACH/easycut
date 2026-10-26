@@ -1,6 +1,6 @@
 // 실제 ffmpeg 로 컷 편집 영상 만들기 (PRD M5, 12.3). 시스템 ffmpeg + tests/fixtures 필요.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -25,7 +25,7 @@ const progress: JobProgress[] = [];
 const events = { progress: (e: JobProgress) => progress.push(e), done: (e: JobDone) => done.push(e) };
 const cacheRoot = () => join(root, 'cache');
 const media = new MediaService(tools, cacheRoot, { progress: () => {}, done: () => {} }, () => {});
-const render = new RenderService(tools, cacheRoot, events);
+const render = new RenderService(tools, cacheRoot, events, join(__dirname, '..', '..', 'resources', 'fonts'));
 
 const finished = async (jobId: string, timeout = 240_000): Promise<JobDone> => {
   await waitFor(() => done.some((d) => d.jobId === jobId), timeout);
@@ -196,6 +196,54 @@ describe('영상 만들기 (컷 편집)', () => {
     // 페이드: 처음 0.3초와 마지막 0.3초는 가운데보다 확실히 작다 (음악만 있는 쪽으로 확인)
     expect(meanDb(muted, 0, 0.3)).toBeLessThan(meanDb(muted, 1.5, 1) - 6);
     expect(meanDb(muted, 9.7, 0.3)).toBeLessThan(meanDb(muted, 6, 1) - 6);
+  }, 400_000);
+
+  it('자막: 5가지 모양을 영상에 굽고, .srt 도 같이 저장', async () => {
+    const styles = ['basic', 'box', 'yellow', 'hand', 'title'] as const;
+    const withSubs = produce(project, (d) => {
+      d.videoTrack = d.videoTrack.slice(0, 1); // 3초 가로 영상
+      d.transitions = [];
+      d.musicTrack = [];
+      d.subtitles = styles.map((id, i) => ({
+        id: `s${i}`,
+        text: i === 4 ? '여행 첫날 {제목}' : `${i + 1}번 자막 한글 테스트입니다 띄어쓰기로 줄이 나뉘어요`,
+        anchorClipId: d.videoTrack[0].id,
+        offset: i * 0.6,
+        duration: 0.55,
+        styleOverride: { presetId: id, position: id === 'title' ? ('top' as const) : ('bottom' as const) }
+      }));
+    });
+    const out = join(root, '자막.mp4');
+    const r = await finished(render.start({ project: withSubs, outputPath: out, quality: '1080p', fps: 30, subtitleMode: 'both' }));
+    expect(r.error).toBeUndefined();
+    const srt = readFileSync(join(root, '자막.srt'), 'utf8');
+    expect(srt.split('\n').slice(0, 4)).toEqual(['1', '00:00:00,000 --> 00:00:00,550', '1번 자막 한글 테스트입니다', '띄어쓰기로 줄이 나뉘어요']);
+    expect(srt).toContain('5\n00:00:02,400 --> 00:00:02,950\n여행 첫날 {제목}');
+    // 자막이 있는 프레임은 아래쪽(제목은 위쪽)에 글자 픽셀이 생긴다: 자막 없는 쪽과 비교
+    const frame = (t: number) =>
+      execFileSync('ffmpeg', ['-v', 'error', '-ss', String(t), '-i', out, '-frames:v', '1', '-vf', 'scale=192:108', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']);
+    const plain = produce(withSubs, (d) => {
+      d.subtitles = [];
+    });
+    const out2 = join(root, '자막없음.mp4');
+    await finished(render.start({ project: plain, outputPath: out2, quality: '1080p', fps: 30, subtitleMode: 'burn' }));
+    const frame2 = (t: number) =>
+      execFileSync('ffmpeg', ['-v', 'error', '-ss', String(t), '-i', out2, '-frames:v', '1', '-vf', 'scale=192:108', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']);
+    const rowsChanged = (a: Buffer, b: Buffer): number[] => {
+      const rows: number[] = [];
+      for (let y = 0; y < 108; y++) {
+        let d = 0;
+        for (let x = 0; x < 192 * 3; x++) d += Math.abs(a[y * 576 + x] - b[y * 576 + x]);
+        if (d / 576 > 8) rows.push(y);
+      }
+      return rows;
+    };
+    for (let i = 0; i < 5; i++) {
+      const rows = rowsChanged(frame(i * 0.6 + 0.25), frame2(i * 0.6 + 0.25));
+      expect(rows.length, `${styles[i]} 자막이 보여야 함`).toBeGreaterThan(2);
+      if (styles[i] === 'title') expect(Math.max(...rows)).toBeLessThan(54);
+      else expect(Math.min(...rows)).toBeGreaterThan(54);
+    }
   }, 400_000);
 
   it('원본이 없으면 쉬운 안내', async () => {

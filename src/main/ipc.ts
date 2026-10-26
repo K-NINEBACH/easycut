@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { IpcChannel, type AppInfo } from '@shared/ipc';
@@ -92,9 +92,11 @@ export function registerIpc(ctx: AppContext): void {
   });
 
   // --- 영상 만들기 (PRD F9) ---
-  // 기본 저장 위치: 내 동영상쉬운편집프로젝트이름.mp4 (이미 있으면 (2), (3)…)
+  // 기본 저장 위치: 내 동영상\쉬운편집\프로젝트이름.mp4 (이미 있으면 (2), (3)…)
+  const videosDir = (): string =>
+    join(process.env.EASYCUT_DATA_DIR ? join(process.env.EASYCUT_DATA_DIR, 'Videos') : app.getPath('videos'), '쉬운편집');
   ipcMain.handle(IpcChannel.RenderDefaultPath, (_e, name: string) => {
-    const dir = join(process.env.EASYCUT_DATA_DIR ? join(process.env.EASYCUT_DATA_DIR, 'Videos') : app.getPath('videos'), '쉬운편집');
+    const dir = videosDir();
     const base = safeFolderName(name) || '내 영상';
     let path = join(dir, `${base}.mp4`);
     for (let n = 2; existsSync(path); n++) path = join(dir, `${base} (${n}).mp4`);
@@ -112,6 +114,20 @@ export function registerIpc(ctx: AppContext): void {
   });
   ipcMain.handle(IpcChannel.RenderStart, (_e, opts: RenderOptions) => ({ jobId: ctx.render.start(opts) }));
   ipcMain.handle(IpcChannel.RenderLogPath, () => ctx.render.logPath);
+
+  // --- 자막 파일 저장 (PRD F4, 유튜브 자막 올리기용) ---
+  ipcMain.handle(IpcChannel.SubtitleSaveSrt, async (_e, name: string, content: string) => {
+    const win = focusedWindow();
+    const opts: Electron.SaveDialogOptions = {
+      title: '자막 파일을 저장할 곳을 고르세요',
+      defaultPath: join(videosDir(), `${safeFolderName(name) || '자막'}.srt`),
+      filters: [{ name: '자막 파일 (SRT)', extensions: ['srt'] }]
+    };
+    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
+    if (res.canceled || !res.filePath) return null;
+    await writeFile(res.filePath, content, 'utf8');
+    return res.filePath;
+  });
 
   // --- 작업 ---
   ipcMain.handle(IpcChannel.JobsCancel, (_e, jobId: string) => {

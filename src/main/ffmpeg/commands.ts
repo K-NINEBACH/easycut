@@ -260,15 +260,36 @@ export interface MusicMix {
 /** 덕킹 (PRD 9.3): 영상 소리를 옆줄(sidechain)로 음악을 누른다 */
 export const DUCKING = 'sidechaincompress=threshold=0.05:ratio=8:attack=20:release=400';
 
-/** 3단계: 최종 인코딩 (PRD 9.3). 배경음악이 있으면 이어 붙이고 페이드·볼륨·덕킹 후 영상 소리와 섞는다 */
-export function buildFinalCommand(input: string, output: string, fmt: RenderFormat, music?: MusicMix): string[] {
+export interface BurnSubtitles {
+  /** 작업 폴더(cwd) 기준 ASS 파일 이름 */
+  assFile: string;
+  /** 작업 폴더(cwd) 기준 글꼴 폴더 이름. 필터 안 경로 이스케이프를 피하려고 상대 이름만 쓴다 */
+  fontsDir: string;
+}
+
+/**
+ * 3단계: 최종 인코딩 (PRD 9.3). 자막은 ASS 로 굽고, 배경음악이 있으면 이어 붙이고 페이드·볼륨·덕킹 후 영상 소리와 섞는다.
+ */
+export function buildFinalCommand(
+  input: string,
+  output: string,
+  fmt: RenderFormat,
+  music?: MusicMix,
+  subtitles?: BurnSubtitles
+): string[] {
   const args = ['-i', input];
   let audioMap = '0:a:0';
+  let videoMap = '0:v:0';
+  const f: string[] = [];
+  if (subtitles) {
+    f.push(`[0:v]ass=filename=${subtitles.assFile}:fontsdir=${subtitles.fontsDir}[vout]`);
+    videoMap = '[vout]';
+  }
   if (music && music.clips.length > 0) {
     const { clips, settings, totalSec } = music;
     for (const c of clips) args.push('-ss', c.inPoint.toFixed(6), '-t', (c.outPoint - c.inPoint).toFixed(6), '-i', c.path);
     const norm = `aresample=${AUDIO_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS`;
-    const f: string[] = clips.map((_, i) => `[${i + 1}:a]${norm}[m${i}]`);
+    f.push(...clips.map((_, i) => `[${i + 1}:a]${norm}[m${i}]`));
     const bed = [
       'apad',
       `atrim=end=${totalSec.toFixed(6)}`,
@@ -283,11 +304,11 @@ export function buildFinalCommand(input: string, output: string, fmt: RenderForm
     } else {
       f.push('[voice0][bgm]amix=inputs=2:normalize=0:duration=first[aout]');
     }
-    args.push('-filter_complex', f.join(';'));
     audioMap = '[aout]';
   }
+  if (f.length) args.push('-filter_complex', f.join(';'));
   args.push(
-    '-map', '0:v:0', '-map', audioMap,
+    '-map', videoMap, '-map', audioMap,
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
     '-r', String(fmt.fps),
     ...SDR_TAGS,

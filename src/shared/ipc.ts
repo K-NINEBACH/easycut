@@ -32,6 +32,7 @@ export const IpcChannel = {
   RenderDefaultPath: 'render:defaultPath',
   RenderPickOutput: 'render:pickOutput',
   RenderLogPath: 'render:logPath',
+  SubtitleSaveSrt: 'subtitle:saveSrt',
   JobsCancel: 'jobs:cancel',
   JobsProgress: 'jobs:progress',
   JobsDone: 'jobs:done',

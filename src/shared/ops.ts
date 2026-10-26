@@ -1,8 +1,8 @@
 // 프로젝트 편집 동작 (순수 함수, Immer draft 에 직접 적용). 렌더러 store 와 테스트에서 사용.
 // 클립을 옮기거나 지우거나 자를 때 전환·자막이 같이 따라가도록 여기서 한 번에 처리한다.
-import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, MusicSettings, Project, Speed, Subtitle, TransitionId, VideoClip } from './types';
+import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, MusicSettings, Project, Speed, Subtitle, SubtitleStyle, TransitionId, VideoClip } from './types';
 import { IMAGE_DEFAULT_DURATION, MIN_CLIP_LENGTH } from './types';
-import { clipLength, isImageClip, layoutMusic, layoutTimeline } from './timeline';
+import { clipLength, isImageClip, layoutMusic, layoutTimeline, subtitleRange } from './timeline';
 
 export const newId = (): string => globalThis.crypto.randomUUID();
 
@@ -326,6 +326,71 @@ export function moveSubtitle(p: Project, id: string, absStart: number, duration?
   s.anchorClipId = a.anchorClipId;
   s.offset = a.offset;
   if (duration !== undefined) s.duration = duration;
+}
+
+function subtitleRanges(p: Project): { id: string; start: number; end: number }[] {
+  const layout = layoutTimeline(p.videoTrack, p.transitions);
+  return p.subtitles.map((s) => ({ id: s.id, ...subtitleRange(layout, s) })).filter((r) => !r.hidden);
+}
+
+/** [＋ 자막 추가] (PRD 4-1): 재생 위치에 3초, 다른 자막과 겹치지 않게. 자리가 없으면 null */
+export function addSubtitleAt(p: Project, t: number, duration = 3, text = ''): Subtitle | null {
+  const total = layoutTimeline(p.videoTrack, p.transitions).total;
+  const span = clampSubtitleSpan(subtitleRanges(p), '', t, duration, total);
+  return span ? addSubtitle(p, span.start, span.duration, text) : null;
+}
+
+/** 끌어서 옮기기·길이 조절: 겹치지 않게 맞추고 소속 장면 다시 계산 */
+export function setSubtitleSpan(p: Project, id: string, absStart: number, duration: number): void {
+  const total = layoutTimeline(p.videoTrack, p.transitions).total;
+  const span = clampSubtitleSpan(subtitleRanges(p), id, absStart, duration, total);
+  if (span) moveSubtitle(p, id, span.start, span.duration);
+}
+
+export function setSubtitleText(p: Project, id: string, text: string): void {
+  const s = p.subtitles.find((x) => x.id === id);
+  if (s) s.text = text;
+}
+
+export function deleteSubtitles(p: Project, ids: string[]): void {
+  const set = new Set(ids);
+  p.subtitles = p.subtitles.filter((s) => !set.has(s.id));
+}
+
+/** 두 항목 합치기 (PRD 4-2): 시간상 바로 다음 자막과 합친다. 반환: 합쳐졌는지 */
+export function mergeWithNextSubtitle(p: Project, id: string): boolean {
+  const ranges = subtitleRanges(p).sort((a, b) => a.start - b.start);
+  const i = ranges.findIndex((r) => r.id === id);
+  const a = ranges[i];
+  const b = ranges[i + 1];
+  if (!a || !b) return false;
+  const sa = p.subtitles.find((s) => s.id === a.id)!;
+  const sb = p.subtitles.find((s) => s.id === b.id)!;
+  sa.text = [sa.text.trim(), sb.text.trim()].filter(Boolean).join(' ');
+  p.subtitles = p.subtitles.filter((s) => s.id !== b.id);
+  moveSubtitle(p, a.id, a.start, b.end - a.start);
+  return true;
+}
+
+/**
+ * 자막 모양 (PRD 4-3). target 'all' 이면 기본 모양(모든 자막)을, 자막 id 면 그 자막만 바꾼다.
+ * 'title' 모양을 고르면 위치도 위로 (다른 모양은 아래로).
+ */
+export function setSubtitleStyle(p: Project, target: 'all' | string, style: Partial<SubtitleStyle>): void {
+  const st = { ...style };
+  if (st.presetId && st.position === undefined) st.position = st.presetId === 'title' ? 'top' : 'bottom';
+  if (target === 'all') {
+    Object.assign(p.defaultSubtitleStyle, st);
+    return;
+  }
+  const s = p.subtitles.find((x) => x.id === target);
+  if (s) s.styleOverride = { ...(s.styleOverride ?? {}), ...st };
+}
+
+/** 이 자막만 다른 모양을 지우고 기본 모양으로 */
+export function clearSubtitleStyle(p: Project, id: string): void {
+  const s = p.subtitles.find((x) => x.id === id);
+  if (s) delete s.styleOverride;
 }
 
 function structuredCloneSafe<T>(v: T): T {

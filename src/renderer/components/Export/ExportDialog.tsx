@@ -1,6 +1,6 @@
 // 영상 만들기 창 (PRD F9): 설정 → 진행 → 완료/실패
 import { useEffect, useMemo, useState } from 'react';
-import type { ExportQuality, JobProgress } from '@shared/types';
+import type { ExportQuality, JobProgress, SubtitleExportMode } from '@shared/types';
 import { formatTime } from '@shared/format';
 import { mediaUrl } from '@shared/mediaUrl';
 import { getProject, useProjectStore } from '../../store/project';
@@ -10,7 +10,7 @@ import { player } from '../Preview/player';
 type Phase =
   | { kind: 'setup' }
   | { kind: 'running'; jobId: string; progress: number; eta?: number; clipIndex?: number }
-  | { kind: 'done'; outputPath: string }
+  | { kind: 'done'; outputPath: string; srtPath?: string }
   | { kind: 'error'; detail: string; logPath?: string };
 
 const YOUTUBE_TIP = 'https://support.google.com/youtube/answer/57407?hl=ko';
@@ -32,6 +32,8 @@ function Dialog(): JSX.Element {
   const [more, setMore] = useState(false);
   const [quality, setQuality] = useState<ExportQuality>('1080p');
   const [fps, setFps] = useState<30 | 60>(30);
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleExportMode>('burn');
+  const hasSubs = useProjectStore((s) => !!s.project?.subtitles.some((x) => x.text.trim()));
 
   // 4K 는 원본이 4K 일 때만 (PRD F9)
   const has4k = useMemo(() => {
@@ -56,7 +58,10 @@ function Dialog(): JSX.Element {
     const offD = window.api.jobs.onDone((e) => {
       if (e.jobId !== jobId) return;
       setLocked(false);
-      if (e.status === 'done') setPhase({ kind: 'done', outputPath: (e.result as { outputPath: string }).outputPath });
+      if (e.status === 'done') {
+        const r = e.result as { outputPath: string; srtPath?: string };
+        setPhase({ kind: 'done', outputPath: r.outputPath, srtPath: r.srtPath });
+      }
       else if (e.status === 'canceled') setPhase({ kind: 'setup' });
       else setPhase({ kind: 'error', detail: e.error ?? '알 수 없는 오류', logPath: e.logPath });
     });
@@ -70,7 +75,7 @@ function Dialog(): JSX.Element {
     const project = getProject();
     if (!project || !outputPath) return;
     setLocked(true);
-    const { jobId } = await window.api.render.start({ project, outputPath, quality, fps, subtitleMode: 'burn' });
+    const { jobId } = await window.api.render.start({ project, outputPath, quality, fps, subtitleMode });
     setPhase({ kind: 'running', jobId, progress: 0 });
   };
 
@@ -146,6 +151,18 @@ function Dialog(): JSX.Element {
                     { v: 60, label: '60fps' }
                   ]}
                 />
+                {hasSubs && (
+                  <Choice
+                    label="자막"
+                    value={subtitleMode}
+                    onChange={setSubtitleMode}
+                    options={[
+                      { v: 'burn', label: '영상에 넣기' },
+                      { v: 'srt', label: '파일로 따로', title: '유튜브에 자막 파일(.srt)로 올릴 때' },
+                      { v: 'both', label: '둘 다' }
+                    ]}
+                  />
+                )}
               </div>
             )}
 
@@ -172,6 +189,11 @@ function Dialog(): JSX.Element {
             <p className="mt-2 break-all rounded-md bg-gray-50 p-2 text-xs text-gray-600" data-testid="export-result">
               {phase.outputPath}
             </p>
+            {phase.srtPath && (
+              <p className="mt-1 break-all text-xs text-gray-500" data-testid="export-srt">
+                자막 파일도 같이 저장했어요: {phase.srtPath}
+              </p>
+            )}
             <div className="mt-4 flex gap-2">
               <button
                 className="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"

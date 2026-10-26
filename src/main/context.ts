@@ -50,8 +50,8 @@ export function createContext(): AppContext {
   };
   const tools = { ffmpeg: getBinaryPath('ffmpeg'), ffprobe: getBinaryPath('ffprobe') };
   const media = new MediaService(tools, () => projects.cacheDir, jobEvents, (p) => allowedFiles.add(p));
-  const render = new RenderService(tools, () => projects.cacheDir, jobEvents);
   const resourcesDir = getResourcesDir();
+  const render = new RenderService(tools, () => projects.cacheDir, jobEvents, join(resourcesDir, 'fonts'));
   if (!existsSync(resourcesDir)) console.warn(`[easycut] resources 폴더가 없어요: ${resourcesDir}`);
   return { projects, media, render, jobEvents, allowedFiles, resourcesDir, tools };
 }

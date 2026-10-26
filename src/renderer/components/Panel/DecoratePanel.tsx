@@ -3,6 +3,7 @@ import TrimPanel from './TrimPanel';
 import FilterPanel from './FilterPanel';
 import TransitionPanel from './TransitionPanel';
 import MusicPanel from './MusicPanel';
+import SubtitlePanel from './SubtitlePanel';
 
 const TABS: { id: PanelTab; label: string }[] = [
   { id: 'trim', label: '자르기' },
@@ -40,6 +41,8 @@ export default function DecoratePanel(): JSX.Element {
         <TransitionPanel />
       ) : tab === 'music' ? (
         <MusicPanel />
+      ) : tab === 'subtitle' ? (
+        <SubtitlePanel />
       ) : (
         <Empty />
       )}

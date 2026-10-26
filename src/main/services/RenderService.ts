@@ -1,8 +1,9 @@
 // 영상 만들기 (PRD F9, 9장).
-// 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 배경음악 섞어 최종 인코딩. (자막은 M9)
+// 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 자막 굽기·배경음악 섞어 최종 인코딩.
 import { existsSync } from 'node:fs';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, extname, join } from 'node:path';
+import { buildAss, buildSrt, FONTS, visibleSubtitles } from '@shared/subtitles';
 import type { MediaItem, RenderOptions } from '@shared/types';
 import { bakeLut, isIdentityLook, lookOf, lutToCube } from '@shared/filters';
 import { clipFrameCounts, layoutTimeline, transitionFrameOverlaps } from '@shared/timeline';
@@ -40,7 +41,9 @@ export class RenderService {
   constructor(
     private readonly tools: Tools,
     private readonly getCacheRoot: () => string | null,
-    events: JobEvents
+    events: JobEvents,
+    /** 동봉 글꼴 폴더 (resources/fonts) */
+    private readonly fontsDir: string
   ) {
     this.queue = new JobQueue(1, events);
   }
@@ -61,7 +64,7 @@ export class RenderService {
     return true;
   }
 
-  private async run(opts: RenderOptions, ctx: JobContext, logPath?: string): Promise<{ outputPath: string }> {
+  private async run(opts: RenderOptions, ctx: JobContext, logPath?: string): Promise<{ outputPath: string; srtPath?: string }> {
     const { project, outputPath } = opts;
     const root = this.getCacheRoot();
     if (!root) throw new RenderError('프로젝트가 열려 있지 않아요');
@@ -141,14 +144,30 @@ export class RenderService {
       // 3단계: 최종 인코딩
       report(2, 0);
       const mix = music.length ? { clips: music, settings: project.music, totalSec: joinedFrames / fmt.fps } : undefined;
-      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, outputPath, fmt, mix), {
+      // 자막: 영상에 굽기 (PRD F4) — 글꼴은 작업 폴더에 복사해 상대 경로로
+      const hasSubs = visibleSubtitles(layout, project.subtitles).length > 0;
+      let burn: { assFile: string; fontsDir: string } | undefined;
+      if (hasSubs && opts.subtitleMode !== 'srt') {
+        await mkdir(join(work, 'fonts'), { recursive: true });
+        for (const font of Object.values(FONTS)) await copyFile(join(this.fontsDir, font.file), join(work, 'fonts', font.file));
+        await writeFile(join(work, 'subs.ass'), buildAss(layout, project.subtitles, project.defaultSubtitleStyle));
+        burn = { assFile: 'subs.ass', fontsDir: 'fonts' };
+      }
+      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, outputPath, fmt, mix, burn), {
+        cwd: work,
         signal: ctx.signal,
         logPath,
         durationSec: joinedFrames / fmt.fps,
         onProgress: (f) => report(2, f)
       });
       report(2, 1);
-      return { outputPath };
+      // 자막 파일 따로 저장: 영상과 같은 이름 .srt
+      let srtPath: string | undefined;
+      if (hasSubs && opts.subtitleMode !== 'burn') {
+        srtPath = outputPath.replace(/\.mp4$/i, '') + '.srt';
+        await writeFile(srtPath, buildSrt(layout, project.subtitles));
+      }
+      return { outputPath, srtPath };
     } catch (err) {
       // 취소·실패 시 만들다 만 결과 파일은 지운다
       await rm(outputPath, { force: true }).catch(() => {});

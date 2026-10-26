@@ -15,6 +15,7 @@
 ```
 npm install              # 의존성 (electron 바이너리가 안 받아지면: node node_modules/electron/install.js)
 npm run fetch:ffmpeg     # resources/bin 에 Windows ffmpeg.exe/ffprobe.exe (BtbN 8.1 GPL) 받기
+node scripts/fetch-fonts.mjs  # 자막 글꼴 (저장소에 이미 있음, 다시 받을 때만)
 npm run check:ffmpeg     # 앱이 쓸 ffmpeg/ffprobe 버전 출력
 npm run dev              # 개발 실행
 npm run typecheck
@@ -38,7 +39,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
 ```
 - Windows: 시스템 ffmpeg 가 없으면 `PATH="$PWD/resources/bin:$PATH"` 를 붙여 샘플 생성·통합 테스트 실행.
 - E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
-- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
+- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music, m9-subtitle. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
   (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).
 
 ## 진행 상황
@@ -62,4 +63,10 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
       덕킹은 말소리 장면에서 50% 근사). 렌더는 최종 인코딩에서 음악 concat → apad/atrim → afade → volume →
       sidechaincompress(PRD 값) → amix. 테스트용 전역 `__ezcut.preview()` 로 엔진 접근
 - [ ] M9 자막
+  - [x] M9a 직접 입력·모양·미리보기·굽기·.srt — 모양·줄바꿈·ASS·SRT 는 `src/shared/subtitles.ts` 한 곳.
+        글꼴(OFL): Pretendard Bold / 나눔손글씨 펜("Nanum Pen") / 검은고딕("Black Han Sans"), resources/fonts 에 포함.
+        CSS 글자 크기 = ASS 크기 × unitsPerEm/(winAscent+winDescent) (libass 기준). 미리보기 CSS 이름은 "EzSub …"
+        (앱 화면 글꼴 Pretendard 와 섞이지 않게). 렌더는 작업 폴더에 글꼴·subs.ass 복사 후 상대 경로로 ass 필터.
+        m9-subtitle E2E 가 미리보기↔결과 자막 글자 영역을 비교 (현재 차이 1% 미만)
+  - [ ] M9b whisper.cpp 자동 생성
 - [ ] M10 마감

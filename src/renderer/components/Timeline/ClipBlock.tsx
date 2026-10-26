@@ -43,7 +43,9 @@ function ClipBlock({ clip, layout, media, pps, dimmed }: Props): JSX.Element {
       onClick={(e) => {
         e.stopPropagation();
         select({ kind: 'clip', id: clip.id });
-        setPanelTab('trim');
+        // 장면을 꾸미는 탭(자르기·필터)에 있으면 그대로, 아니면 자르기 탭으로
+        const tab = useUiStore.getState().panelTab;
+        if (tab !== 'trim' && tab !== 'filter') setPanelTab('trim');
       }}
       data-testid="clip"
       data-clip-id={clip.id}

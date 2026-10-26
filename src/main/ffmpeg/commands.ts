@@ -124,9 +124,14 @@ export function buildClipCommand(
   fmt: RenderFormat,
   frames: number,
   output: string,
-  /** 사진 입력 경로 (HEIC 는 미리 변환한 JPG) */
-  imagePath?: string
+  extra: {
+    /** 사진 입력 경로 (HEIC 는 미리 변환한 JPG) */
+    imagePath?: string;
+    /** 필터 LUT(.cube) 파일 이름. 경로 이스케이프를 피하려고 작업 폴더(cwd) 기준 이름만 받는다 */
+    lutFile?: string;
+  } = {}
 ): string[] {
+  const { imagePath, lutFile } = extra;
   const { width: w, height: h, fps } = fmt;
   const seconds = frames / fps;
   const samples = Math.round(seconds * AUDIO_RATE);
@@ -147,8 +152,10 @@ export function buildClipCommand(
   const video =
     `[0:v]${pre.join(',')}[in];` +
     fitFilter(clip.fitMode, w, h) +
+    // 필터: 미리보기와 같은 LUT, GPU 텍스처와 같은 삼선형 보간 (PRD F7)
+    `;[out]${lutFile ? `lut3d=file=${lutFile}:interp=trilinear,` : ''}` +
     // 끝이 모자라면 마지막 프레임을 늘려서라도 정확히 frames 개
-    `;[out]fps=${fps},setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=1,trim=end_frame=${frames}[v]`;
+    `fps=${fps},setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=1,trim=end_frame=${frames}[v]`;
 
   const audioParts = useSourceAudio
     ? [

@@ -1,6 +1,6 @@
 // 프로젝트 편집 동작 (순수 함수, Immer draft 에 직접 적용). 렌더러 store 와 테스트에서 사용.
 // 클립을 옮기거나 지우거나 자를 때 전환·자막이 같이 따라가도록 여기서 한 번에 처리한다.
-import type { MediaItem, MusicClip, Project, Speed, Subtitle, VideoClip } from './types';
+import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, Project, Speed, Subtitle, VideoClip } from './types';
 import { IMAGE_DEFAULT_DURATION, MIN_CLIP_LENGTH } from './types';
 import { clipLength, isImageClip, layoutMusic, layoutTimeline } from './timeline';
 
@@ -125,6 +125,33 @@ export function setClipAudio(p: Project, clipId: string, audio: { muted?: boolea
   if (!c) return;
   if (audio.muted !== undefined) c.muted = audio.muted;
   if (audio.volume !== undefined) c.volume = Math.min(2, Math.max(0, Math.round(audio.volume * 100) / 100));
+}
+
+/** 필터·강도·기본 보정 (PRD F7). ids 여러 개면 [모든 장면에 적용] */
+export function setLook(
+  p: Project,
+  ids: string[],
+  look: { filter?: FilterId; filterStrength?: number; adjust?: Partial<ColorAdjust> }
+): void {
+  const set = new Set(ids);
+  const clampAdj = (v: number): number => Math.min(50, Math.max(-50, Math.round(v)));
+  for (const c of p.videoTrack) {
+    if (!set.has(c.id)) continue;
+    if (look.filter !== undefined) c.filter = look.filter;
+    if (look.filterStrength !== undefined) c.filterStrength = Math.min(1, Math.max(0, Math.round(look.filterStrength * 100) / 100));
+    if (look.adjust) {
+      for (const k of ['brightness', 'contrast', 'saturation'] as const) {
+        const v = look.adjust[k];
+        if (v !== undefined) c.adjust[k] = clampAdj(v);
+      }
+    }
+  }
+}
+
+/** 화면 맞춤: 흐린 배경 / 검은 배경 / 꽉 채우기 (PRD F2) */
+export function setFitMode(p: Project, clipId: string, mode: FitMode): void {
+  const c = p.videoTrack.find((x) => x.id === clipId);
+  if (c) c.fitMode = mode;
 }
 
 /**

@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, extname, join } from 'node:path';
 import type { MediaItem, RenderOptions } from '@shared/types';
+import { bakeLut, isIdentityLook, lookOf, lutToCube } from '@shared/filters';
 import { clipFrameCounts, layoutTimeline } from '@shared/timeline';
 import { weightedProgress } from '../ffmpeg/progress';
 import { runFfmpeg } from '../ffmpeg/run';
@@ -97,7 +98,13 @@ export class RenderService {
         report(0, stage1(), current);
         const imagePath =
           clip.imageDuration !== undefined && extname(media.path).toLowerCase() === '.heic' ? media.proxyPath : undefined;
-        await runFfmpeg(this.tools.ffmpeg, buildClipCommand(clip, media, fmt, frames[i], out, imagePath), {
+        let lutFile: string | undefined;
+        if (!isIdentityLook(lookOf(clip))) {
+          lutFile = `lut_${String(i).padStart(4, '0')}.cube`;
+          await writeFile(join(work, lutFile), lutToCube(bakeLut(lookOf(clip))));
+        }
+        await runFfmpeg(this.tools.ffmpeg, buildClipCommand(clip, media, fmt, frames[i], out, { imagePath, lutFile }), {
+          cwd: work,
           signal: ctx.signal,
           logPath,
           durationSec: frames[i] / fmt.fps,

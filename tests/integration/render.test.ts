@@ -1,11 +1,13 @@
 // 실제 ffmpeg 로 컷 편집 영상 만들기 (PRD M5, 12.3). 시스템 ffmpeg + tests/fixtures 필요.
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { MediaService } from '../../src/main/services/MediaService';
 import { RenderService } from '../../src/main/services/RenderService';
-import { insertMedia, setSpeed, trimClip, setClipAudio } from '../../src/shared/ops';
+import { insertMedia, setLook, setSpeed, trimClip, setClipAudio } from '../../src/shared/ops';
+import { FILTERS } from '../../src/shared/filters';
 import { newProject } from '../../src/shared/project';
 import { layoutTimeline } from '../../src/shared/timeline';
 import type { JobDone, JobProgress, Project } from '../../src/shared/types';
@@ -101,6 +103,22 @@ describe('영상 만들기 (컷 편집)', () => {
     expect(existsSync(out)).toBe(false);
     expect(readdirSync(join(cacheRoot(), 'render')).filter((n) => n !== 'ffmpeg-render.log')).toEqual([]);
   }, 60_000);
+
+  it('필터: 장면마다 다른 필터로 만들 수 있고, 흑백은 실제로 회색', async () => {
+    const filtered = produce(project, (d) => {
+      d.videoTrack = d.videoTrack.slice(0, 5);
+      d.videoTrack.forEach((c, i) => setLook(d, [c.id], { filter: FILTERS[(i % 8) + 1].id }));
+      setLook(d, [d.videoTrack[0].id], { filter: 'mono', filterStrength: 1, adjust: { contrast: 10 } });
+    });
+    const out = join(root, '필터.mp4');
+    const r = await finished(render.start({ project: filtered, outputPath: out, quality: '720p', fps: 30, subtitleMode: 'burn' }));
+    expect(r.error).toBeUndefined();
+    // 첫 장면(흑백) 1초 지점을 4x4 로 줄여 RGB 를 읽는다
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-ss', '1', '-i', out, '-frames:v', '1', '-vf', 'scale=4:4', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']);
+    let maxDiff = 0;
+    for (let i = 0; i < raw.length; i += 3) maxDiff = Math.max(maxDiff, Math.abs(raw[i] - raw[i + 1]), Math.abs(raw[i + 1] - raw[i + 2]));
+    expect(maxDiff).toBeLessThanOrEqual(4);
+  }, 300_000);
 
   it('원본이 없으면 쉬운 안내', async () => {
     const broken = produce(project, (d) => {

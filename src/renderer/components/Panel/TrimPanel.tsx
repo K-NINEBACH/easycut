@@ -4,15 +4,21 @@ import * as ops from '@shared/ops';
 import { formatTimePrecise } from '@shared/format';
 import { mediaUrl } from '@shared/mediaUrl';
 import { isImageClip } from '@shared/timeline';
-import type { MediaItem, Speed, VideoClip } from '@shared/types';
-import { edit, liveEdit, useProjectStore } from '../../store/project';
+import type { FitMode, MediaItem, Speed, VideoClip } from '@shared/types';
+import { edit, useProjectStore } from '../../store/project';
 import { useUiStore } from '../../store/ui';
 import { useTimelineLayout } from '../../hooks/useTimelineLayout';
+import LiveSlider from './LiveSlider';
 import { player } from '../Preview/player';
 import { startTrimDrag, type TrimSide } from '../Timeline/trimDrag';
 import { Empty } from './DecoratePanel';
 
 const SPEEDS: Speed[] = [0.5, 1, 1.5, 2];
+const FITS: { id: FitMode; label: string }[] = [
+  { id: 'blur', label: '흐린 배경' },
+  { id: 'black', label: '검은 배경' },
+  { id: 'fill', label: '꽉 채우기' }
+];
 
 export default function TrimPanel(): JSX.Element {
   const selId = useUiStore((s) => (s.selection?.kind === 'clip' ? s.selection.id : null));
@@ -79,6 +85,27 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
                 data-testid={`speed-${s}`}
               >
                 {s}배
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      {media?.width && media.height && Math.abs(media.width / media.height - 16 / 9) > 0.02 && (
+        <Field label="화면 채우기">
+          <div className="flex gap-1">
+            {FITS.map((f) => (
+              <button
+                key={f.id}
+                className={`flex-1 rounded-md border py-1.5 ${
+                  clip.fitMode === f.id ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => edit('화면 채우기 바꾸기', (p) => ops.setFitMode(p, clip.id, f.id))}
+                aria-pressed={clip.fitMode === f.id}
+                title={f.id === 'fill' ? '화면을 꽉 채워요 (위아래나 옆이 잘려요)' : undefined}
+                data-testid={`fit-${f.id}`}
+              >
+                {f.label}
               </button>
             ))}
           </div>
@@ -189,50 +216,5 @@ function RangeBar({ clip, media }: { clip: VideoClip; media: MediaItem }): JSX.E
         <span>끝 {formatTimePrecise(clip.outPoint)}</span>
       </div>
     </Field>
-  );
-}
-
-/** 끄는 동안은 바로 반영, 손을 떼면 되돌리기 1단계 */
-function LiveSlider(props: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  format: (v: number) => string;
-  editLabel: string;
-  apply: (p: Parameters<Parameters<typeof edit>[1]>[0], v: number) => void;
-  disabled?: boolean;
-  testId?: string;
-}): JSX.Element {
-  const live = useRef<ReturnType<typeof liveEdit> | null>(null);
-  const finish = (): void => {
-    live.current?.end();
-    live.current = null;
-  };
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="flex justify-between text-xs font-medium text-gray-500">
-        {props.label}
-        <span>{props.format(props.value)}</span>
-      </span>
-      <input
-        type="range"
-        min={props.min}
-        max={props.max}
-        step={props.step}
-        value={props.value}
-        disabled={props.disabled}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          live.current ??= liveEdit(props.editLabel);
-          live.current.update((p) => props.apply(p, v));
-        }}
-        onPointerUp={finish}
-        onKeyUp={finish}
-        onBlur={finish}
-        data-testid={props.testId}
-      />
-    </label>
   );
 }

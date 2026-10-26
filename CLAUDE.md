@@ -38,7 +38,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
 ```
 - Windows: 시스템 ffmpeg 가 없으면 `PATH="$PWD/resources/bin:$PATH"` 를 붙여 샘플 생성·통합 테스트 실행.
 - E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
-- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
+- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
   (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).
 
 ## 진행 상황
@@ -52,5 +52,8 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
       창은 `Export/ExportDialog.tsx`). 중간 파일은 .mov + PCM 소리(AAC 지연으로 싱크 밀림 방지),
       장면별 프레임 수는 `timeline.clipFrameCounts` (누적 오차 없음). 전환은 아직 무시(M7),
       내보내기 창의 자막 선택은 M9 에서 추가. `EZ_KEEP=1` 이면 렌더 통합 테스트 결과물을 남김
-- [ ] M6 필터 (Preview/luts.ts 자리 있음) / M7 전환 (shaders.ts 에 xfade 수식 구현됨) / M8 음악 / M9 자막
+- [x] M6 필터 — 색 변환은 `src/shared/filters.ts` 한 곳. 33³ LUT 로 구워 미리보기(3D 텍스처)와
+      렌더(`lut3d=...:interp=trilinear`, 작업 폴더 cwd 기준 파일명)가 같은 표를 씀. m6-filter E2E 가 필터별
+      미리보기↔결과 프레임 색 차이를 잼 (현재 평균 3/255 이하). 화면 채우기 선택은 자르기 탭(16:9 아닌 장면만)
+- [ ] M7 전환 (shaders.ts 에 xfade 수식 구현됨) / M8 음악 / M9 자막
 - [ ] M10 마감

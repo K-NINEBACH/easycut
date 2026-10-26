@@ -163,4 +163,12 @@ export function toFrame(t: number, fps: number): number {
   return Math.round(t * fps + 1e-6);
 }
 
+/**
+ * 렌더용 장면별 출력 프레임 수. 장면마다 따로 반올림하지 않고 시작·끝 경계를 프레임으로 맞춰서
+ * 장면이 많아도 전체 길이 오차가 1프레임을 넘지 않는다.
+ */
+export function clipFrameCounts(layout: TimelineLayout, fps: number): number[] {
+  return layout.clips.map((c) => Math.max(1, toFrame(c.end, fps) - toFrame(c.start, fps)));
+}
+
 export { IMAGE_DEFAULT_DURATION };

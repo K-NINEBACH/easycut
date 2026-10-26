@@ -381,7 +381,7 @@ export async function extractWaveform(ffmpeg: string, input: string, signal?: Ab
   return { peaksPerSec: WAVEFORM_PEAKS_PER_SEC, peaks };
 }
 
-async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
+export async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
   let next = 0;
   const worker = async (): Promise<void> => {

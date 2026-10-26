@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { IpcChannel, type AppInfo, type ImportResult, type WaveformData } from '@shared/ipc';
-import type { JobDone, JobProgress, MediaItem, Project, RecentProject } from '@shared/types';
+import type { JobDone, JobProgress, MediaItem, Project, RecentProject, RenderOptions } from '@shared/types';
 
 function subscribe<T>(channel: string, cb: (e: T) => void): () => void {
   const listener = (_: unknown, e: T): void => cb(e);
@@ -33,6 +33,12 @@ const api = {
       ipcRenderer.invoke(IpcChannel.MediaReadWaveform, path),
     /** 드래그 앤 드롭한 File 의 실제 경로 */
     pathForFile: (file: File): string => webUtils.getPathForFile(file)
+  },
+  render: {
+    defaultPath: (name: string): Promise<string> => ipcRenderer.invoke(IpcChannel.RenderDefaultPath, name),
+    pickOutput: (current: string): Promise<string | null> => ipcRenderer.invoke(IpcChannel.RenderPickOutput, current),
+    start: (opts: RenderOptions): Promise<{ jobId: string }> => ipcRenderer.invoke(IpcChannel.RenderStart, opts),
+    logPath: (): Promise<string | null> => ipcRenderer.invoke(IpcChannel.RenderLogPath)
   },
   jobs: {
     cancel: (jobId: string): Promise<void> => ipcRenderer.invoke(IpcChannel.JobsCancel, jobId),

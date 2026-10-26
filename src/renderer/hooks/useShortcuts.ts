@@ -28,7 +28,8 @@ export function useShortcuts(handlers: ShortcutHandlers = {}): void {
     const onKey = (e: KeyboardEvent): void => {
       if (isTyping(e.target)) return;
       const ui = useUiStore.getState();
-      if (ui.locked) return;
+      // 렌더 중이거나 영상 만들기 창이 떠 있으면 편집 단축키를 막는다
+      if (ui.locked || ui.exportOpen) return;
       const ctrl = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
 

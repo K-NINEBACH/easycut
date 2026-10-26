@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppInfo } from '../hooks/useAppInfo';
 import { silent, useProjectStore } from '../store/project';
+import { useUiStore } from '../store/ui';
 
 export default function TopBar(): JSX.Element {
   const projectName = useProjectStore((s) => s.project?.name ?? '');
@@ -13,6 +14,8 @@ export default function TopBar(): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const info = useAppInfo();
   const toolsReady = !!info?.ffmpeg.version && !!info?.ffprobe.version;
+  const hasClips = useProjectStore((s) => (s.project?.videoTrack.length ?? 0) > 0);
+  const openExport = useUiStore((s) => s.setExportOpen);
 
   useEffect(() => setName(projectName), [projectName]);
 
@@ -98,7 +101,10 @@ export default function TopBar(): JSX.Element {
 
       <button
         className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-        disabled
+        disabled={!hasClips || !toolsReady}
+        onClick={() => openExport(true)}
+        title={hasClips ? '영상 만들기 (Ctrl+E)' : '타임라인에 장면을 넣으면 만들 수 있어요'}
+        data-testid="export-button"
       >
         ▶ 영상 만들기
       </button>

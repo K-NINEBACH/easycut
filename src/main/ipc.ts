@@ -1,7 +1,10 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { IpcChannel, type AppInfo } from '@shared/ipc';
-import type { MediaItem, Project } from '@shared/types';
+import type { MediaItem, Project, RenderOptions } from '@shared/types';
+import { safeFolderName } from '@shared/project';
 import { SUPPORTED_EXTENSIONS } from '@shared/mediaFormats';
 import { getBinaryVersion } from './ffmpeg/binaries';
 import type { AppContext } from './context';
@@ -88,9 +91,31 @@ export function registerIpc(ctx: AppContext): void {
     }
   });
 
+  // --- 영상 만들기 (PRD F9) ---
+  // 기본 저장 위치: 내 동영상쉬운편집프로젝트이름.mp4 (이미 있으면 (2), (3)…)
+  ipcMain.handle(IpcChannel.RenderDefaultPath, (_e, name: string) => {
+    const dir = join(process.env.EASYCUT_DATA_DIR ? join(process.env.EASYCUT_DATA_DIR, 'Videos') : app.getPath('videos'), '쉬운편집');
+    const base = safeFolderName(name) || '내 영상';
+    let path = join(dir, `${base}.mp4`);
+    for (let n = 2; existsSync(path); n++) path = join(dir, `${base} (${n}).mp4`);
+    return path;
+  });
+  ipcMain.handle(IpcChannel.RenderPickOutput, async (_e, current: string) => {
+    const win = focusedWindow();
+    const opts: Electron.SaveDialogOptions = {
+      title: '영상을 저장할 곳을 고르세요',
+      defaultPath: current,
+      filters: [{ name: 'MP4 영상', extensions: ['mp4'] }]
+    };
+    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
+    return res.canceled || !res.filePath ? null : res.filePath;
+  });
+  ipcMain.handle(IpcChannel.RenderStart, (_e, opts: RenderOptions) => ({ jobId: ctx.render.start(opts) }));
+  ipcMain.handle(IpcChannel.RenderLogPath, () => ctx.render.logPath);
+
   // --- 작업 ---
   ipcMain.handle(IpcChannel.JobsCancel, (_e, jobId: string) => {
-    media.cancel(jobId);
+    if (!ctx.render.cancel(jobId)) media.cancel(jobId);
   });
 
   // --- 셸 ---

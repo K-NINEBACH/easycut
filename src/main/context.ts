@@ -6,12 +6,14 @@ import type { JobDone, JobProgress } from '@shared/types';
 import { getBinaryPath, getResourcesDir } from './paths';
 import { MediaService } from './services/MediaService';
 import { ProjectService } from './services/ProjectService';
+import { RenderService } from './services/RenderService';
 import type { JobEvents } from './services/JobQueue';
 
 /** 메인 프로세스 서비스 모음 (app ready 이후 생성) */
 export interface AppContext {
   projects: ProjectService;
   media: MediaService;
+  render: RenderService;
   jobEvents: JobEvents;
   allowedFiles: Set<string>;
   resourcesDir: string;
@@ -48,7 +50,8 @@ export function createContext(): AppContext {
   };
   const tools = { ffmpeg: getBinaryPath('ffmpeg'), ffprobe: getBinaryPath('ffprobe') };
   const media = new MediaService(tools, () => projects.cacheDir, jobEvents, (p) => allowedFiles.add(p));
+  const render = new RenderService(tools, () => projects.cacheDir, jobEvents);
   const resourcesDir = getResourcesDir();
   if (!existsSync(resourcesDir)) console.warn(`[easycut] resources 폴더가 없어요: ${resourcesDir}`);
-  return { projects, media, jobEvents, allowedFiles, resourcesDir, tools };
+  return { projects, media, render, jobEvents, allowedFiles, resourcesDir, tools };
 }

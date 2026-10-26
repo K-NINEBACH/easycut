@@ -9,3 +9,7 @@ resources/bin/*
 !resources/bin/.gitkeep
 resources/models/*.bin
 *.tsbuildinfo
+
+# 생성된 테스트 샘플 (node scripts/make-fixtures.mjs)
+tests/fixtures/*
+!tests/fixtures/.gitkeep

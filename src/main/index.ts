@@ -1,7 +1,12 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, shell } from 'electron';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { applyDataDirOverride, createContext } from './context';
 import { getAppInfo, registerIpc } from './ipc';
+import { registerMediaProtocol, registerMediaSchemePrivileges } from './protocol';
+
+applyDataDirOverride();
+registerMediaSchemePrivileges();
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -24,7 +29,7 @@ function createWindow(): void {
 
   // 외부 링크는 기본 브라우저로
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (/^https:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
 
@@ -39,10 +44,16 @@ app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.easycut.app');
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window));
 
-  registerIpc();
+  const ctx = createContext();
+  registerMediaProtocol({
+    allowedRoots: () => [ctx.projects.currentDir].filter((d): d is string => !!d),
+    allowedFiles: ctx.allowedFiles,
+    resourcesDir: ctx.resourcesDir
+  });
+  registerIpc(ctx);
 
-  // M0 확인용: 시작 시 FFmpeg/FFprobe 버전을 로그로 출력
-  const info = await getAppInfo();
+  // 시작 시 FFmpeg/FFprobe 버전을 로그로 출력 (M0)
+  const info = await getAppInfo(ctx);
   for (const bin of [info.ffmpeg, info.ffprobe]) {
     if (bin.version) console.log(`[easycut] ${bin.name}: ${bin.version} (${bin.path})`);
     else console.error(`[easycut] ${bin.name} 실행 실패: ${bin.path} — ${bin.error}`);

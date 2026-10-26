@@ -2,7 +2,7 @@
 import { cpSync, mkdtempSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES } from './launch.mjs';
+import { launch, state, waitReady, check, forceKill, FIXTURES } from './launch.mjs';
 
 const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
 const shotDir = process.argv[2] ?? dataDir;
@@ -98,7 +98,7 @@ await win.screenshot({ path: join(shotDir, 'm2-many.png') });
 // 7) 자동 저장 후 강제 종료 → 재실행 시 복구
 const expected = await order();
 await win.waitForFunction(() => window.__ezcut.useProjectStore.getState().saveState === 'saved', null, { timeout: 8000 });
-app.process().kill('SIGKILL');
+forceKill(app);
 await new Promise((r) => setTimeout(r, 500));
 ({ app, win } = await launch(dataDir));
 check((await order()).join() === expected.join(), `강제 종료 후 직전 상태 복구 (${(await order()).length}개)`);
@@ -109,7 +109,7 @@ const srcB = join(dataDir, '옮긴 폴더');
 renameSync(srcA, srcB);
 ({ app, win } = await launch(dataDir));
 await win.waitForTimeout(1000);
-const dialog = await win.getByText('영상 파일을 찾을 수 없어요').isVisible();
+const dialog = await win.getByRole('heading', { name: '영상 파일을 찾을 수 없어요' }).isVisible();
 check(dialog, '파일을 찾을 수 없어요 창');
 await win.screenshot({ path: join(shotDir, 'm2-missing.png') });
 await win.evaluate(async (folder) => {

@@ -44,8 +44,10 @@ if (force || !existsSync(join(dir, 'portrait_hevc_60.mov'))) {
 // 3. 아이폰 HDR (HLG, 10bit HEVC)
 ff('hdr_hlg.mov', [
   ...src('1280x720', 30), ...tone(5, 550),
-  '-vf', 'format=yuv420p10le',
-  '-c:v', 'libx265', '-preset', 'ultrafast', '-tag:v', 'hvc1', '-x265-params', 'log-level=error',
+  '-vf', 'setparams=color_primaries=bt2020:color_trc=arib-std-b67:colorspace=bt2020nc,format=yuv420p10le',
+  // 아이폰처럼 색 정보를 HEVC 스트림(VUI)에도 기록 (ffmpeg 8 은 -color_trc 만으로는 안 남음)
+  '-c:v', 'libx265', '-preset', 'ultrafast', '-tag:v', 'hvc1',
+  '-x265-params', 'log-level=error:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc',
   '-color_primaries', 'bt2020', '-color_trc', 'arib-std-b67', '-colorspace', 'bt2020nc',
   '-c:a', 'aac', '-shortest', '-metadata', 'creation_time=2026-08-01T11:00:00Z'
 ]);

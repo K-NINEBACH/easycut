@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { MediaItem } from '@shared/types';
 import type { ImportResult, WaveformData } from '@shared/ipc';
 import { fileNameOf, mediaTypeFromPath } from '@shared/mediaFormats';
@@ -97,8 +97,8 @@ export class MediaService {
   async import(paths: string[], knownPaths: string[] = []): Promise<ImportResult> {
     const expanded = await this.expandPaths(paths);
     const failed = expanded.unsupported.map((p) => ({ path: p, fileName: fileNameOf(p) }));
-    // 이미 불러온 파일, 같은 파일 중복 지정은 건너뛴다 (Windows 경로는 대소문자 무시)
-    const norm = (p: string): string => (process.platform === 'win32' ? p.toLowerCase() : p);
+    // 이미 불러온 파일, 같은 파일 중복 지정은 건너뛴다 (경로 표기 정리, Windows 는 대소문자 무시)
+    const norm = (p: string): string => (process.platform === 'win32' ? resolve(p).toLowerCase() : resolve(p));
     const seen = new Set(knownPaths.map(norm));
     const duplicates: string[] = [];
     const files: string[] = [];

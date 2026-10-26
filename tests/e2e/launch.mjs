@@ -50,3 +50,11 @@ export function check(cond, msg) {
     process.exitCode = 1;
   } else console.log('✓', msg);
 }
+
+/** 강제 종료 흉내. Windows 는 kill 이 주 프로세스만 죽여 자식이 남으므로 묶음째 끈다 */
+export function forceKill(app) {
+  const proc = app.process();
+  if (process.platform === 'win32') {
+    createRequire(import.meta.url)('node:child_process').execFileSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+  } else proc.kill('SIGKILL');
+}

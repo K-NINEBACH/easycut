@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import type { BinaryInfo } from '@shared/ipc';
 
-export type BinaryName = 'ffmpeg' | 'ffprobe';
+export type BinaryName = 'ffmpeg' | 'ffprobe' | 'whisper-cli';
 
 export interface ResolveOptions {
   platform: NodeJS.Platform;
@@ -23,7 +23,7 @@ export function resolveBinaryPath(name: BinaryName, opts: ResolveOptions): strin
   return name;
 }
 
-export function getBinaryVersion(name: BinaryName, path: string): Promise<BinaryInfo> {
+export function getBinaryVersion(name: BinaryInfo['name'], path: string): Promise<BinaryInfo> {
   return new Promise((resolve) => {
     execFile(path, ['-version'], { windowsHide: true, timeout: 10_000 }, (err, stdout) => {
       if (err) {

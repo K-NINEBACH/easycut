@@ -116,6 +116,58 @@ export function visibleSubtitles(layout: TimelineLayout, subs: Subtitle[]): { su
     .map(({ sub, start, end }) => ({ sub, start, end }));
 }
 
+// --- 말소리로 자막 만들기 (PRD 4-2) ---
+
+/** 음성 인식 결과 한 구간 (이어 붙인 소리 기준 초) */
+export interface SpeechSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** 이어 붙인 소리에서 각 장면이 차지하는 구간 */
+export interface ClipSpan {
+  clipId: string;
+  /** 이어 붙인 소리에서의 시작 (초) */
+  start: number;
+  /** 장면 길이 (타임라인 초, 속도 반영) */
+  length: number;
+}
+
+/** 한 자막 블록 최대 줄 수 */
+export const MAX_LINES = 2;
+
+/**
+ * 인식 결과 → 자막 (id 없이). 구간이 시작하는 장면에 붙이고 그 장면 끝을 넘지 않게 자른다.
+ * 두 줄을 넘는 구간은 두 줄씩 나누고 시간은 글자 수 비율로 나눈다.
+ */
+export function segmentsToSubtitles(
+  segments: SpeechSegment[],
+  spans: ClipSpan[]
+): { anchorClipId: string; offset: number; duration: number; text: string }[] {
+  const out: { anchorClipId: string; offset: number; duration: number; text: string }[] = [];
+  for (const seg of segments) {
+    const text = seg.text.trim().replace(/^-\s*/, '');
+    if (!text || seg.end - seg.start < 0.05) continue;
+    const span = spans.find((s) => seg.start >= s.start - 1e-6 && seg.start < s.start + s.length - 1e-6);
+    if (!span) continue;
+    const start = seg.start - span.start;
+    const end = Math.min(seg.end - span.start, span.length);
+    const lines = wrapSubtitle(text);
+    const blocks: string[] = [];
+    for (let i = 0; i < lines.length; i += MAX_LINES) blocks.push(lines.slice(i, i + MAX_LINES).join('\n'));
+    const weights = blocks.map((b) => [...b.replace(/\s/g, '')].length || 1);
+    const total = weights.reduce((a, b) => a + b, 0);
+    let t = start;
+    blocks.forEach((b, i) => {
+      const d = ((end - start) * weights[i]) / total;
+      out.push({ anchorClipId: span.clipId, offset: t, duration: d, text: b });
+      t += d;
+    });
+  }
+  return out;
+}
+
 // --- ASS (렌더 굽기) ---
 
 /** #RRGGBB + 투명도(0 불투명~1 투명) → ASS &HAABBGGRR */

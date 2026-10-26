@@ -33,6 +33,7 @@ export const IpcChannel = {
   RenderPickOutput: 'render:pickOutput',
   RenderLogPath: 'render:logPath',
   SubtitleSaveSrt: 'subtitle:saveSrt',
+  SubtitleGenerate: 'subtitle:generate',
   JobsCancel: 'jobs:cancel',
   JobsProgress: 'jobs:progress',
   JobsDone: 'jobs:done',

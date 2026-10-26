@@ -13,3 +13,6 @@ resources/models/*.bin
 # 생성된 테스트 샘플 (node scripts/make-fixtures.mjs)
 tests/fixtures/*
 !tests/fixtures/.gitkeep
+
+# 말소리 테스트 샘플 (node scripts/make-speech-fixture.mjs)
+tests/speech/*

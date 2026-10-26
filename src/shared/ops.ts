@@ -387,6 +387,12 @@ export function setSubtitleStyle(p: Project, target: 'all' | string, style: Part
   if (s) s.styleOverride = { ...(s.styleOverride ?? {}), ...st };
 }
 
+/** 말소리로 만든 자막 넣기 (PRD 4-2): 대상 장면에 붙어 있던 자막은 지우고 새로 넣는다 */
+export function replaceClipSubtitles(p: Project, clipIds: string[], subs: Subtitle[]): void {
+  const set = new Set(clipIds);
+  p.subtitles = p.subtitles.filter((s) => !set.has(s.anchorClipId)).concat(subs.filter((s) => set.has(s.anchorClipId)));
+}
+
 /** 이 자막만 다른 모양을 지우고 기본 모양으로 */
 export function clearSubtitleStyle(p: Project, id: string): void {
   const s = p.subtitles.find((x) => x.id === id);

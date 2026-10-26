@@ -7,6 +7,7 @@ import { getBinaryPath, getResourcesDir } from './paths';
 import { MediaService } from './services/MediaService';
 import { ProjectService } from './services/ProjectService';
 import { RenderService } from './services/RenderService';
+import { SubtitleService } from './services/SubtitleService';
 import type { JobEvents } from './services/JobQueue';
 
 /** 메인 프로세스 서비스 모음 (app ready 이후 생성) */
@@ -14,6 +15,7 @@ export interface AppContext {
   projects: ProjectService;
   media: MediaService;
   render: RenderService;
+  subtitles: SubtitleService;
   jobEvents: JobEvents;
   allowedFiles: Set<string>;
   resourcesDir: string;
@@ -52,6 +54,11 @@ export function createContext(): AppContext {
   const media = new MediaService(tools, () => projects.cacheDir, jobEvents, (p) => allowedFiles.add(p));
   const resourcesDir = getResourcesDir();
   const render = new RenderService(tools, () => projects.cacheDir, jobEvents, join(resourcesDir, 'fonts'));
+  const subtitles = new SubtitleService(
+    { ffmpeg: tools.ffmpeg, whisper: getBinaryPath('whisper-cli'), model: join(resourcesDir, 'models', 'ggml-small.bin') },
+    () => projects.cacheDir,
+    jobEvents
+  );
   if (!existsSync(resourcesDir)) console.warn(`[easycut] resources 폴더가 없어요: ${resourcesDir}`);
-  return { projects, media, render, jobEvents, allowedFiles, resourcesDir, tools };
+  return { projects, media, render, subtitles, jobEvents, allowedFiles, resourcesDir, tools };
 }

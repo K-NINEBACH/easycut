@@ -41,6 +41,9 @@ const api = {
     logPath: (): Promise<string | null> => ipcRenderer.invoke(IpcChannel.RenderLogPath)
   },
   subtitle: {
+    /** 말소리로 자막 만들기. clipIds 를 비우면 전체 영상. 결과는 jobs.onDone 의 result (Subtitle[]) */
+    generate: (args: { project: Project; clipIds?: string[] }): Promise<{ jobId: string }> =>
+      ipcRenderer.invoke(IpcChannel.SubtitleGenerate, args),
     /** 저장 위치를 고르게 한 뒤 저장. 취소하면 null */
     saveSrt: (name: string, content: string): Promise<string | null> =>
       ipcRenderer.invoke(IpcChannel.SubtitleSaveSrt, name, content)

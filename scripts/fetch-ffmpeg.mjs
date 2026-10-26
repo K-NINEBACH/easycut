@@ -34,7 +34,9 @@ await pipeline(Readable.fromWeb(res.body), createWriteStream(zipPath));
 const extractDir = join(work, 'x');
 mkdirSync(extractDir);
 if (process.platform === 'win32') {
-  execFileSync('tar', ['-xf', zipPath, '-C', extractDir], { stdio: 'inherit' });
+  // Git Bash 의 GNU tar 는 "C:" 를 원격 주소로 읽으므로 Windows 기본 tar 를 직접 쓴다
+  const tar = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe');
+  execFileSync(tar, ['-xf', zipPath, '-C', extractDir], { stdio: 'inherit' });
 } else {
   execFileSync('unzip', ['-q', zipPath, '-d', extractDir], { stdio: 'inherit' });
 }

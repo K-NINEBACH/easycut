@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { produce } from 'immer';
-import { buildAss, buildSrt, escapeAssText, resolveStyle, wrapSubtitle } from '../../src/shared/subtitles';
+import { buildAss, buildSrt, escapeAssText, resolveStyle, segmentsToSubtitles, wrapSubtitle } from '../../src/shared/subtitles';
 import {
   addSubtitleAt,
   clearSubtitleStyle,
@@ -137,5 +137,35 @@ describe('자막 편집 (PRD 4-1)', () => {
     expect(resolveStyle({ ...p.defaultSubtitleStyle, ...p.subtitles[0].styleOverride })).toMatchObject({ size: 114, position: 'top' });
     const q = produce(p, (d) => clearSubtitleStyle(d, d.subtitles[0].id));
     expect(q.subtitles[0].styleOverride).toBeUndefined();
+  });
+});
+
+describe('말소리 → 자막 (PRD 4-2)', () => {
+  const spans = [
+    { clipId: 'a', start: 0, length: 5 },
+    { clipId: 'b', start: 5, length: 4 }
+  ];
+  it('구간이 시작하는 장면에 붙고, 장면 끝을 넘지 않음', () => {
+    const r = segmentsToSubtitles(
+      [
+        { start: 0.5, end: 2, text: ' 안녕하세요.' },
+        { start: 4.2, end: 6.5, text: ' -걸쳐 있는 말' },
+        { start: 6, end: 7, text: '   ' }
+      ],
+      spans
+    );
+    expect(r).toEqual([
+      { anchorClipId: 'a', offset: 0.5, duration: 1.5, text: '안녕하세요.' },
+      { anchorClipId: 'a', offset: expect.closeTo(4.2), duration: expect.closeTo(0.8), text: '걸쳐 있는 말' }
+    ]);
+  });
+  it('두 줄(40자)을 넘으면 나누고 시간은 글자 수 비율로', () => {
+    const long = '오늘은 아침 일찍 일어나서 바닷가를 따라 오래 걸었어요 그리고 작은 카페에서 따뜻한 커피를 마셨습니다';
+    const r = segmentsToSubtitles([{ start: 5, end: 9, text: long }], spans);
+    expect(r.length).toBe(2);
+    expect(r.every((x) => x.anchorClipId === 'b' && x.text.split('\n').length <= 2)).toBe(true);
+    expect(r[0].offset).toBe(0);
+    expect(r[0].duration + r[1].duration).toBeCloseTo(4);
+    expect(r[1].offset).toBeCloseTo(r[0].duration);
   });
 });

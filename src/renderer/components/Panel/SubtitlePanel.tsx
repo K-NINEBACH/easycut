@@ -17,6 +17,7 @@ import { useUiStore, toast } from '../../store/ui';
 import { useTimelineLayout } from '../../hooks/useTimelineLayout';
 import { player } from '../Preview/player';
 import { SubtitleText, ensureSubtitleFonts } from '../Preview/SubtitleOverlay';
+import SpeechDialog from './SpeechDialog';
 
 const focusEditor = (): void => {
   setTimeout(() => document.querySelector<HTMLTextAreaElement>('[data-testid=subtitle-text]')?.focus(), 0);
@@ -32,6 +33,7 @@ export default function SubtitlePanel(): JSX.Element {
   const selected = subs.find((s) => s.id === selId);
   const layout = useTimelineLayout();
   const [onlyThis, setOnlyThis] = useState(false);
+  const [speechOpen, setSpeechOpen] = useState(false);
   // 선택한 자막이 바뀌면, 그 자막에 따로 정한 모양이 있는지로 "이 자막만" 을 맞춘다
   useEffect(() => setOnlyThis(!!selected?.styleOverride), [selId]);
 
@@ -79,6 +81,15 @@ export default function SubtitlePanel(): JSX.Element {
       >
         ＋ 자막 추가
       </button>
+      <button
+        className="rounded-md border border-gray-200 py-2 hover:bg-gray-50 disabled:opacity-50"
+        onClick={() => setSpeechOpen(true)}
+        disabled={!hasClips}
+        data-testid="speech-open"
+      >
+        🎤 말소리로 자막 만들기
+      </button>
+      {speechOpen && <SpeechDialog onClose={() => setSpeechOpen(false)} />}
 
       {selected && <SubtitleEditor key={selected.id} id={selected.id} text={selected.text} />}
 

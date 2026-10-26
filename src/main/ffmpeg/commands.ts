@@ -318,3 +318,39 @@ export function buildFinalCommand(
   );
   return args;
 }
+
+// ---------------------------------------------------------------------------
+// 말소리로 자막 만들기 (PRD 4-2)
+
+export interface SpeechClip {
+  path: string;
+  inPoint: number;
+  outPoint: number;
+  speed: number;
+  /** 타임라인 길이 (초) — 이만큼으로 맞춘다 */
+  length: number;
+}
+
+/** 장면들의 소리를 타임라인 순서대로 이어 16kHz mono WAV 로 (whisper 입력) */
+export function buildSpeechAudioCommand(clips: SpeechClip[], output: string): string[] {
+  const args: string[] = [];
+  for (const c of clips) args.push('-ss', c.inPoint.toFixed(6), '-t', (c.outPoint - c.inPoint).toFixed(6), '-i', c.path);
+  const f = clips.map((c, i) => {
+    const parts = ['asetpts=PTS-STARTPTS', ...(c.speed !== 1 ? [`atempo=${c.speed}`] : []), 'aresample=16000', 'aformat=sample_fmts=s16:channel_layouts=mono', 'apad', `atrim=end=${c.length.toFixed(6)}`];
+    return `[${i}:a:0]${parts.join(',')}[s${i}]`;
+  });
+  f.push(`${clips.map((_, i) => `[s${i}]`).join('')}concat=n=${clips.length}:v=0:a=1[a]`);
+  args.push('-filter_complex', f.join(';'), '-map', '[a]', '-c:a', 'pcm_s16le', '-ar', '16000', '-ac', '1', '-f', 'wav', output);
+  return args;
+}
+
+/** whisper-cli: 한국어, JSON 출력, 진행률 출력 */
+export function buildWhisperArgs(model: string, wav: string, outPrefix: string, threads: number): string[] {
+  return ['-m', model, '-l', 'ko', '-f', wav, '-oj', '-of', outPrefix, '-pp', '-t', String(threads)];
+}
+
+/** whisper-cli 진행률 줄 → 0~1 */
+export function parseWhisperProgress(line: string): number | null {
+  const m = /progress\s*=\s*(\d+)%/.exec(line);
+  return m ? Math.min(1, Number(m[1]) / 100) : null;
+}

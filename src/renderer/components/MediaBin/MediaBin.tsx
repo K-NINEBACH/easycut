@@ -3,9 +3,10 @@ import { useProjectStore } from '../../store/project';
 import { useUiStore } from '../../store/ui';
 import { pickAndImport, sortMedia } from '../../store/mediaActions';
 import MediaCard from './MediaCard';
+import { addMediaToTimeline } from '../../store/editActions';
 
 export default function MediaBin(): JSX.Element {
-  const media = useProjectStore((s) => s.project?.media ?? []);
+  const media = useProjectStore((s) => s.project?.media) ?? [];
   const sort = useUiStore((s) => s.mediaSort);
   const setSort = useUiStore((s) => s.setMediaSort);
   const selected = useUiStore((s) => s.selectedMediaIds);
@@ -72,6 +73,7 @@ export default function MediaBin(): JSX.Element {
               selected={selected.includes(m.id)}
               selectedIds={selected}
               onSelect={(e) => onSelect(m.id, e)}
+              onDoubleClick={() => addMediaToTimeline([m.id])}
             />
           ))}
         </div>
@@ -90,7 +92,20 @@ export default function MediaBin(): JSX.Element {
   );
 }
 
-/** M2 에서 [타임라인에 모두 넣기] 가 들어갈 자리 */
+/** 여러 개 선택 시 [타임라인에 모두 넣기] — 선택한 순서대로 (PRD F2) */
 function BinActions(): JSX.Element | null {
-  return null;
+  const selected = useUiStore((s) => s.selectedMediaIds);
+  const setSelected = useUiStore((s) => s.setSelectedMedia);
+  if (selected.length < 2) return null;
+  return (
+    <button
+      className="w-full rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+      onClick={() => {
+        addMediaToTimeline(selected);
+        setSelected([]);
+      }}
+    >
+      타임라인에 모두 넣기 ({selected.length}개)
+    </button>
+  );
 }

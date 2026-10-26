@@ -50,9 +50,9 @@ export default function MediaCard({ item, selected, selectedIds, onSelect, onDou
         ) : null}
 
         {item.missing ? (
-          <Overlay tone="error">파일을 찾을 수 없어요</Overlay>
+          <Overlay tone="error">파일 없음</Overlay>
         ) : item.proxyStatus === 'error' ? (
-          <Overlay tone="error">준비하지 못했어요</Overlay>
+          <Overlay tone="error">준비 실패</Overlay>
         ) : !ready ? (
           <Overlay>준비 중 {pct}%</Overlay>
         ) : null}

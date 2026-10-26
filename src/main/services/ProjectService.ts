@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { copyFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Project, RecentProject } from '@shared/types';
 import { newProject, PROJECT_FILE, safeFolderName } from '@shared/project';
@@ -72,9 +72,7 @@ export class ProjectService {
     const path = this.currentPath;
     if (!path) throw new Error('열린 프로젝트가 없어요');
     const data = JSON.stringify({ ...project, updatedAt: new Date().toISOString() }, null, 1);
-    const tmp = `${path}.tmp`;
-    await writeFile(tmp, data, 'utf8');
-    await renameWithRetry(tmp, path);
+    await writeAtomic(path, data);
 
     if (Date.now() - this.lastBackupAt >= BACKUP_INTERVAL_MS) {
       await copyFile(path, `${path}.bak`);
@@ -91,7 +89,23 @@ export class ProjectService {
   /** 가장 최근 프로젝트 (비정상 종료 후 이어서 열기용) */
   async lastProjectPath(): Promise<string | null> {
     const [first] = await this.listRecent();
-    return first?.path ?? null;
+    if (first) return first.path;
+    // 최근 목록이 없거나 깨졌으면 프로젝트 폴더에서 가장 최근에 저장된 것
+    let best: { path: string; mtime: number } | null = null;
+    try {
+      for (const name of await readdir(this.projectsRoot)) {
+        const p = join(this.projectsRoot, name, PROJECT_FILE);
+        try {
+          const st = await stat(p);
+          if (!best || st.mtimeMs > best.mtime) best = { path: p, mtime: st.mtimeMs };
+        } catch {
+          // 프로젝트 폴더가 아님
+        }
+      }
+    } catch {
+      return null;
+    }
+    return best?.path ?? null;
   }
 
   private recentFile(): string {
@@ -115,7 +129,7 @@ export class ProjectService {
       : project.media[0]?.thumbnailPath;
     list.unshift({ path, name: project.name, updatedAt: new Date().toISOString(), thumbnailPath: thumb });
     await mkdir(this.userDataDir, { recursive: true });
-    await writeFile(this.recentFile(), JSON.stringify(list.slice(0, MAX_RECENT), null, 1), 'utf8');
+    await writeAtomic(this.recentFile(), JSON.stringify(list.slice(0, MAX_RECENT), null, 1));
   }
 }
 
@@ -125,6 +139,13 @@ export function parseProject(text: string): Project {
     throw new Error('프로젝트 파일 형식이 올바르지 않아요');
   }
   return p;
+}
+
+/** 임시 파일에 쓴 뒤 교체 → 저장 중 강제 종료돼도 기존 파일이 깨지지 않는다 */
+async function writeAtomic(path: string, data: string): Promise<void> {
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, data, 'utf8');
+  await renameWithRetry(tmp, path);
 }
 
 async function renameWithRetry(from: string, to: string): Promise<void> {

@@ -4,9 +4,12 @@ import PreviewArea from '../components/Preview/PreviewArea';
 import DecoratePanel from '../components/Panel/DecoratePanel';
 import Timeline from '../components/Timeline/Timeline';
 import FileDropZone from '../components/FileDropZone';
+import MissingMediaDialog from '../components/MissingMediaDialog';
+import { useShortcuts } from '../hooks/useShortcuts';
 
 // PRD 5.1 메인 편집 화면: 상단바 / (보관함 | 미리보기 | 꾸미기 패널) / 타임라인
 export default function EditorScreen(): JSX.Element {
+  useShortcuts();
   return (
     <div className="flex h-full flex-col">
       <TopBar />
@@ -17,6 +20,7 @@ export default function EditorScreen(): JSX.Element {
       </div>
       <Timeline />
       <FileDropZone />
+      <MissingMediaDialog />
     </div>
   );
 }

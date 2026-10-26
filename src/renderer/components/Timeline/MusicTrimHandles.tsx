@@ -1,12 +1,34 @@
 import type { MusicLayout } from '@shared/timeline';
 import type { MediaItem, MusicClip } from '@shared/types';
+import { startMusicTrimDrag, type TrimSide } from './trimDrag';
 
-/** 음악 앞뒤 자르기 손잡이 (M8 에서 구현) */
-export default function MusicTrimHandles(_props: {
+/** 선택한 음악 양 끝의 앞뒤 자르기 손잡이 (PRD F5) */
+export default function MusicTrimHandles({
+  clip,
+  pps
+}: {
   clip: MusicClip;
   layout: MusicLayout;
   media?: MediaItem;
   pps: number;
-}): JSX.Element | null {
-  return null;
+}): JSX.Element {
+  const handle = (side: TrimSide): JSX.Element => (
+    <div
+      className={`absolute top-0 z-20 flex h-full w-2.5 cursor-ew-resize items-center justify-center bg-yellow-400 hover:bg-yellow-300 ${
+        side === 'in' ? 'left-0' : 'right-0'
+      }`}
+      onPointerDown={(e) => startMusicTrimDrag(e, clip, side, pps)}
+      onClick={(e) => e.stopPropagation()}
+      title={side === 'in' ? '끌어서 음악 앞부분 자르기' : '끌어서 음악 뒷부분 자르기'}
+      data-testid={side === 'in' ? 'music-trim-in' : 'music-trim-out'}
+    >
+      <div className="h-4 w-0.5 rounded bg-yellow-800/60" />
+    </div>
+  );
+  return (
+    <>
+      {handle('in')}
+      {handle('out')}
+    </>
+  );
 }

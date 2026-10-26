@@ -10,6 +10,7 @@ import {
   moveClipsTo,
   moveSubtitle,
   setClipAudio,
+  setMusicSettings,
   setTransition,
   setImageDuration,
   setSpeed,
@@ -293,5 +294,13 @@ describe('장면 전환 (PRD F6)', () => {
       failed = setTransition(d, [d.videoTrack[0].id], 'fade', 1);
     });
     expect(failed).toBe(1);
+  });
+});
+
+describe('배경음악 설정', () => {
+  it('볼륨 0~100%, 페이드 0 이상', () => {
+    const p = produce(base(), (d) => setMusicSettings(d, { volume: 1.4, fadeIn: -1, fadeOut: 2, ducking: false }));
+    expect(p.music).toEqual({ volume: 1, fadeIn: 0, fadeOut: 2, ducking: false });
+    expect(base().music).toEqual({ volume: 0.3, fadeIn: 1, fadeOut: 3, ducking: true });
   });
 });

@@ -1,6 +1,6 @@
 // FFmpeg 명령 생성 순수 함수 (PRD 9.4). 실행은 run.ts 가 담당한다.
 // 반환값은 ffmpeg 인자 배열 (공통 옵션 -y, -progress 등은 runFfmpeg 가 붙임).
-import type { ExportQuality, FitMode, MediaItem, VideoClip } from '@shared/types';
+import type { ExportQuality, FitMode, MediaItem, MusicSettings, VideoClip } from '@shared/types';
 
 /** HDR(HLG/PQ) → SDR bt709 톤매핑 (PRD F7, 9.1) */
 export const HDR_TO_SDR =
@@ -244,16 +244,56 @@ export function buildConcatCopyCommand(listPath: string, output: string): string
   return ['-f', 'concat', '-safe', '0', '-i', listPath, '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy', '-f', 'mov', output];
 }
 
-/** 3단계: 최종 인코딩 (PRD 9.3). 자막·음악은 M8·M9 에서 */
-export function buildFinalCommand(input: string, output: string, fmt: RenderFormat): string[] {
-  return [
-    '-i', input,
-    '-map', '0:v:0', '-map', '0:a:0',
+export interface MusicInput {
+  path: string;
+  inPoint: number;
+  outPoint: number;
+}
+
+export interface MusicMix {
+  clips: MusicInput[];
+  settings: MusicSettings;
+  /** 영상 전체 길이 (초). 음악은 여기에 맞춰 자르거나 무음으로 채운다 */
+  totalSec: number;
+}
+
+/** 덕킹 (PRD 9.3): 영상 소리를 옆줄(sidechain)로 음악을 누른다 */
+export const DUCKING = 'sidechaincompress=threshold=0.05:ratio=8:attack=20:release=400';
+
+/** 3단계: 최종 인코딩 (PRD 9.3). 배경음악이 있으면 이어 붙이고 페이드·볼륨·덕킹 후 영상 소리와 섞는다 */
+export function buildFinalCommand(input: string, output: string, fmt: RenderFormat, music?: MusicMix): string[] {
+  const args = ['-i', input];
+  let audioMap = '0:a:0';
+  if (music && music.clips.length > 0) {
+    const { clips, settings, totalSec } = music;
+    for (const c of clips) args.push('-ss', c.inPoint.toFixed(6), '-t', (c.outPoint - c.inPoint).toFixed(6), '-i', c.path);
+    const norm = `aresample=${AUDIO_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS`;
+    const f: string[] = clips.map((_, i) => `[${i + 1}:a]${norm}[m${i}]`);
+    const bed = [
+      'apad',
+      `atrim=end=${totalSec.toFixed(6)}`,
+      ...(settings.fadeIn > 0 ? [`afade=t=in:st=0:d=${settings.fadeIn}`] : []),
+      ...(settings.fadeOut > 0 ? [`afade=t=out:st=${Math.max(0, totalSec - settings.fadeOut).toFixed(6)}:d=${settings.fadeOut}`] : []),
+      `volume=${settings.volume}`
+    ].join(',');
+    f.push(`${clips.map((_, i) => `[m${i}]`).join('')}concat=n=${clips.length}:v=0:a=1,${bed}[bgm]`);
+    f.push(`[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo[voice0]`);
+    if (settings.ducking) {
+      f.push('[voice0]asplit=2[voice][sc]', `[bgm][sc]${DUCKING}[duck]`, '[voice][duck]amix=inputs=2:normalize=0:duration=first[aout]');
+    } else {
+      f.push('[voice0][bgm]amix=inputs=2:normalize=0:duration=first[aout]');
+    }
+    args.push('-filter_complex', f.join(';'));
+    audioMap = '[aout]';
+  }
+  args.push(
+    '-map', '0:v:0', '-map', audioMap,
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
     '-r', String(fmt.fps),
     ...SDR_TAGS,
     '-c:a', 'aac', '-b:a', '192k', '-ar', String(AUDIO_RATE), '-ac', '2',
     '-movflags', '+faststart',
     '-f', 'mp4', output
-  ];
+  );
+  return args;
 }

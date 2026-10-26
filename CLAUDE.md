@@ -38,7 +38,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
 ```
 - Windows: 시스템 ffmpeg 가 없으면 `PATH="$PWD/resources/bin:$PATH"` 를 붙여 샘플 생성·통합 테스트 실행.
 - E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
-- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
+- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
   (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).
 
 ## 진행 상황
@@ -58,5 +58,8 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
 - [x] M7 전환 — 렌더 2단계 `buildChainCommand` (컷=concat, 전환=xfade+acrossfade, 매 단계 뒤 fps 로 시간 단위 맞춤),
       장면 16개 넘으면 묶음별로 잇고 묶음끼리 다시 이음. 전환이 하나도 없으면 다시 인코딩 없이 concat 복사.
       ◆ 는 장면 아래쪽(가운데는 자르기 손잡이 자리). 전환 탭 `Panel/TransitionPanel.tsx`
-- [ ] M8 음악 / M9 자막
+- [x] M8 배경음악 — 미리보기 `Preview/music.ts` (<audio> 2개, 페이드는 `timeline.musicFade` = 렌더 afade,
+      덕킹은 말소리 장면에서 50% 근사). 렌더는 최종 인코딩에서 음악 concat → apad/atrim → afade → volume →
+      sidechaincompress(PRD 값) → amix. 테스트용 전역 `__ezcut.preview()` 로 엔진 접근
+- [ ] M9 자막
 - [ ] M10 마감

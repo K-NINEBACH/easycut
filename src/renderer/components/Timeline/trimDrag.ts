@@ -1,7 +1,7 @@
 // 앞뒤 자르기 드래그 (타임라인 손잡이·꾸미기 패널 바 공용, PRD F3)
 import * as ops from '@shared/ops';
 import { isImageClip } from '@shared/timeline';
-import type { VideoClip } from '@shared/types';
+import type { MusicClip, VideoClip } from '@shared/types';
 import { getProject, liveEdit } from '../../store/project';
 import { useUiStore } from '../../store/ui';
 
@@ -41,6 +41,32 @@ export function startTrimDrag(e: React.PointerEvent, clip: VideoClip, side: Trim
     el.removeEventListener('pointerup', up);
     el.removeEventListener('pointercancel', up);
     setScrub(null);
+    live.end();
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+}
+
+/** 음악 앞뒤 자르기 드래그 (1px = 1/pps 초, 속도 없음) */
+export function startMusicTrimDrag(e: React.PointerEvent, clip: MusicClip, side: TrimSide, pps: number): void {
+  e.stopPropagation();
+  e.preventDefault();
+  const el = e.currentTarget as HTMLElement;
+  el.setPointerCapture(e.pointerId);
+  const x0 = e.clientX;
+  const orig = { inPoint: clip.inPoint, outPoint: clip.outPoint };
+  const live = liveEdit('음악 자르기');
+  const move = (ev: PointerEvent): void => {
+    const d = (ev.clientX - x0) / pps;
+    const a = side === 'in' ? orig.inPoint + d : orig.inPoint;
+    const b = side === 'out' ? orig.outPoint + d : orig.outPoint;
+    live.update((p) => ops.trimMusic(p, clip.id, a, b));
+  };
+  const up = (): void => {
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('pointercancel', up);
     live.end();
   };
   el.addEventListener('pointermove', move);

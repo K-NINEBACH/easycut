@@ -7,6 +7,7 @@ import type { MediaItem, Project, VideoClip } from '@shared/types';
 import { getProject } from '../../store/project';
 import { useUiStore } from '../../store/ui';
 import { GlRenderer, type SourceParams } from './glRenderer';
+import { MusicPreview } from './music';
 
 export type PreviewStatus = 'empty' | 'preparing' | 'missing' | 'ok';
 
@@ -29,6 +30,8 @@ export class PreviewEngine {
   private gl: GlRenderer;
   private slots: [Slot, Slot];
   private images = new Map<string, HTMLImageElement>();
+  /** 배경음악 (PRD F5) */
+  readonly music: MusicPreview;
   private audio: AudioContext | null = null;
   private raf = 0;
   private cache: { clips: VideoClip[]; transitions: Project['transitions']; layout: TimelineLayout } | null = null;
@@ -60,6 +63,7 @@ export class PreviewEngine {
       return { video: v, gain: null, uploadedClip: null, uploadedTime: -1, lutKey: null };
     };
     this.slots = [make(), make()];
+    this.music = new MusicPreview(host);
   }
 
   start(): void {
@@ -82,6 +86,7 @@ export class PreviewEngine {
       s.video.load();
       s.video.remove();
     }
+    this.music.destroy();
     void this.audio?.close();
   }
 
@@ -100,6 +105,7 @@ export class PreviewEngine {
         s.gain.gain.value = 0;
         src.connect(s.gain).connect(this.audio.destination);
       }
+      this.music.connect(this.audio);
     }
     if (this.audio.state === 'suspended') void this.audio.resume();
     return this.audio;
@@ -144,6 +150,7 @@ export class PreviewEngine {
     if (ui.playing) this.ensureAudio();
     if (!p || p.videoTrack.length === 0) {
       this.pauseAll();
+      this.music.stop();
       this.gl.clear();
       this.setStatus('empty');
       this.setApprox(false);
@@ -179,6 +186,7 @@ export class PreviewEngine {
     }
 
     const playing = ui.playing && !scrub;
+    this.music.update(p, layout, ui.playhead, playing);
     const active = ib === null ? [ia] : [ia, ib];
     const used = new Set<number>();
     const sources: (SourceParams | null)[] = [];

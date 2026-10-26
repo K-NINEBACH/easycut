@@ -6,10 +6,17 @@ import { useProjectStore } from './store/project';
 import { useUiStore } from './store/ui';
 import { importPaths, prepareAllMedia, subscribeMediaJobs } from './store/mediaActions';
 import { useAutosave } from './hooks/useAutosave';
+import * as previewModule from './components/Preview/PreviewArea';
 
 // 테스트(Playwright)에서 상태를 들여다볼 수 있게
 if (import.meta.env.DEV || window.api.isTest) {
-  (window as unknown as Record<string, unknown>).__ezcut = { useProjectStore, useUiStore, importPaths };
+  (window as unknown as Record<string, unknown>).__ezcut = {
+    useProjectStore,
+    useUiStore,
+    importPaths,
+    /** 미리보기 엔진 (음악 소리 크기 등 확인용) */
+    preview: () => previewModule.previewEngine
+  };
 }
 
 export default function App(): JSX.Element {

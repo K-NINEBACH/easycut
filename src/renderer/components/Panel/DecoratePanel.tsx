@@ -2,6 +2,7 @@ import { useUiStore, type PanelTab } from '../../store/ui';
 import TrimPanel from './TrimPanel';
 import FilterPanel from './FilterPanel';
 import TransitionPanel from './TransitionPanel';
+import MusicPanel from './MusicPanel';
 
 const TABS: { id: PanelTab; label: string }[] = [
   { id: 'trim', label: '자르기' },
@@ -37,6 +38,8 @@ export default function DecoratePanel(): JSX.Element {
         <FilterPanel />
       ) : tab === 'transition' ? (
         <TransitionPanel />
+      ) : tab === 'music' ? (
+        <MusicPanel />
       ) : (
         <Empty />
       )}

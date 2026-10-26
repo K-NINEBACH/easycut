@@ -1,12 +1,12 @@
 // 실제 ffmpeg 로 컷 편집 영상 만들기 (PRD M5, 12.3). 시스템 ffmpeg + tests/fixtures 필요.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { MediaService } from '../../src/main/services/MediaService';
 import { RenderService } from '../../src/main/services/RenderService';
-import { insertMedia, setLook, setSpeed, trimClip, setClipAudio } from '../../src/shared/ops';
+import { fitMusicToVideo, insertMedia, setLook, setSpeed, trimClip, setClipAudio, trimMusic } from '../../src/shared/ops';
 import { FILTERS } from '../../src/shared/filters';
 import { TRANSITIONS } from '../../src/shared/transitions';
 import { newProject } from '../../src/shared/project';
@@ -147,6 +147,55 @@ describe('영상 만들기 (컷 편집)', () => {
     expect(Math.abs(f.duration - expected)).toBeLessThanOrEqual(0.1);
     const aDur = Number((probeStream(out, 'a:0') as unknown as { duration: string }).duration);
     expect(Math.abs(aDur - expected)).toBeLessThanOrEqual(0.1);
+  }, 400_000);
+
+  it('배경음악: 반복·자르기·페이드, 덕킹은 말소리 구간에서만', async () => {
+    const mediaOf = (name: string) => project.media.find((m) => m.fileName === name)!;
+    const make = (ducking: boolean, muteVoice = false) =>
+      produce(project, (d) => {
+        d.videoTrack = [];
+        insertMedia(d, [mediaOf('noaudio.mp4').id, mediaOf('landscape_h264_30.mp4').id]); // 0~5초 소리 없음, 5~10초 말소리
+        if (muteVoice) setClipAudio(d, d.videoTrack[1].id, { muted: true });
+        d.transitions = [];
+        d.musicTrack = [];
+        insertMedia(d, [mediaOf('music.mp3').id]);
+        trimMusic(d, d.musicTrack[0].id, 2, 6); // 4초만 → 길이 맞추기로 반복
+        fitMusicToVideo(d);
+        d.music = { volume: 0.5, fadeIn: 1, fadeOut: 2, ducking };
+      });
+    const meanDb = (file: string, from: number, len: number): number => {
+      const r = spawnSync('ffmpeg', ['-hide_banner', '-ss', String(from), '-t', String(len), '-i', file, '-af', 'volumedetect', '-f', 'null', '-'], {
+        encoding: 'utf8'
+      });
+      return Number(/mean_volume: (-?[\d.]+) dB/.exec(r.stderr)![1]);
+    };
+    const renderTo = async (proj: Project, name: string): Promise<string> => {
+      const out = join(root, name);
+      const r = await finished(render.start({ project: proj, outputPath: out, quality: '720p', fps: 30, subtitleMode: 'burn' }));
+      expect(r.error).toBeUndefined();
+      return out;
+    };
+    const on = make(true);
+    expect(on.musicTrack.map((m) => m.loop)).toEqual([false, true, true]);
+    const duck = await renderTo(on, '덕킹.mp4');
+    const nod = await renderTo(make(false), '덕킹없음.mp4');
+    const muted = await renderTo(make(true, true), '소리끈장면.mp4');
+    expect(Math.abs(probeFormat(duck).duration - 10)).toBeLessThanOrEqual(0.1);
+
+    // 소리 없는 구간(1.5~4.5초): 덕킹 켜도 같음
+    expect(Math.abs(meanDb(duck, 1.5, 3) - meanDb(nod, 1.5, 3))).toBeLessThan(0.5);
+    // 소리 끈 장면에서는 덕킹이 일어나지 않음: 음악만 남아 덕킹 없는 음악 구간과 같은 크기
+    expect(Math.abs(meanDb(muted, 6, 2) - meanDb(nod, 1.5, 3))).toBeLessThan(0.5);
+    // 말소리 구간(6~8초): 힘(power) = 말소리 + 음악. 음악만의 힘은 소리 끈 쪽에서 알 수 있으므로
+    // 덕킹 후 음악이 얼마나 남았는지 계산한다 → 절반 아래(-3dB 이상 줄어듦)
+    const pow = (db: number): number => Math.pow(10, db / 10);
+    const music = pow(meanDb(muted, 6, 2));
+    const voice = pow(meanDb(nod, 6, 2)) - music;
+    const left = (pow(meanDb(duck, 6, 2)) - voice) / music;
+    expect(left).toBeLessThan(0.5);
+    // 페이드: 처음 0.3초와 마지막 0.3초는 가운데보다 확실히 작다 (음악만 있는 쪽으로 확인)
+    expect(meanDb(muted, 0, 0.3)).toBeLessThan(meanDb(muted, 1.5, 1) - 6);
+    expect(meanDb(muted, 9.7, 0.3)).toBeLessThan(meanDb(muted, 6, 1) - 6);
   }, 400_000);
 
   it('원본이 없으면 쉬운 안내', async () => {

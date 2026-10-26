@@ -1,5 +1,5 @@
 // 영상 만들기 (PRD F9, 9장).
-// 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 최종 인코딩. (자막·음악은 M8·M9)
+// 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 배경음악 섞어 최종 인코딩. (자막은 M9)
 import { existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, extname, join } from 'node:path';
@@ -72,6 +72,11 @@ export class RenderService {
       if (!m || !existsSync(m.path)) throw new RenderError(`원본 파일을 찾을 수 없어요: ${m?.fileName ?? '알 수 없는 파일'}`);
       return m;
     });
+    const music = project.musicTrack.map((c) => {
+      const m = mediaById.get(c.mediaId);
+      if (!m || !existsSync(m.path)) throw new RenderError(`음악 파일을 찾을 수 없어요: ${m?.fileName ?? '알 수 없는 파일'}`);
+      return { path: m.path, inPoint: c.inPoint, outPoint: c.outPoint };
+    });
 
     const fmt: RenderFormat = { ...RENDER_SIZES[opts.quality], fps: opts.fps };
     const layout = layoutTimeline(project.videoTrack, project.transitions);
@@ -135,7 +140,8 @@ export class RenderService {
 
       // 3단계: 최종 인코딩
       report(2, 0);
-      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, outputPath, fmt), {
+      const mix = music.length ? { clips: music, settings: project.music, totalSec: joinedFrames / fmt.fps } : undefined;
+      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, outputPath, fmt, mix), {
         signal: ctx.signal,
         logPath,
         durationSec: joinedFrames / fmt.fps,

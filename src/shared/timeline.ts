@@ -154,6 +154,26 @@ export function layoutMusic(track: MusicClip[]): MusicLayout[] {
   });
 }
 
+/** 시간 t 에 나오는 음악 클립 index 와 원본 시각. 없으면 null */
+export function musicAt(track: MusicClip[], t: number): { index: number; sourceTime: number } | null {
+  const l = layoutMusic(track);
+  for (let i = 0; i < l.length; i++) {
+    if (t >= l[i].start - EPS && t < l[i].end - EPS) return { index: i, sourceTime: track[i].inPoint + (t - l[i].start) };
+  }
+  return null;
+}
+
+/**
+ * 음악 페이드 배율 0~1 (PRD F5). 시작에서 fadeIn 초 동안 올라가고, 영상 끝(total) 전 fadeOut 초 동안 내려간다.
+ * 렌더의 afade(t=in:d=fadeIn, t=out:st=total-fadeOut:d=fadeOut) 와 같은 직선.
+ */
+export function musicFade(t: number, total: number, fadeIn: number, fadeOut: number): number {
+  let g = 1;
+  if (fadeIn > 0 && t < fadeIn) g = Math.max(0, t / fadeIn);
+  if (fadeOut > 0 && t > total - fadeOut) g = Math.min(g, Math.max(0, (total - t) / fadeOut));
+  return g;
+}
+
 export function musicTotal(track: MusicClip[]): number {
   return track.reduce((a, m) => a + Math.max(0, m.outPoint - m.inPoint), 0);
 }

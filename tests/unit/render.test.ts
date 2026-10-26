@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildChainCommand, buildClipCommand, buildConcatList, buildFinalCommand, chainFrames, fitFilter } from '../../src/main/ffmpeg/commands';
-import { clipFrameCounts, layoutTimeline, transitionFrameOverlaps } from '../../src/shared/timeline';
+import { clipFrameCounts, layoutTimeline, musicAt, musicFade, transitionFrameOverlaps } from '../../src/shared/timeline';
 import type { MediaItem, VideoClip } from '../../src/shared/types';
 
 const video: MediaItem = {
@@ -133,5 +133,52 @@ describe('전환으로 잇기 (PRD 9.2)', () => {
     expect(f).toContain('[x1][v2]xfade=transition=slideleft:duration=0.600000:offset=5.400000,fps=30[x2]');
     expect(f).toContain('[y1][2:a]acrossfade=ns=28800:c1=tri:c2=tri[y2]');
     expect(args).toMatchSnapshot();
+  });
+});
+
+describe('배경음악 (PRD F5, 9.3)', () => {
+  const settings = { volume: 0.3, fadeIn: 1, fadeOut: 3, ducking: true };
+  const mus = { clips: [{ path: 'D:\음악\a.mp3', inPoint: 2, outPoint: 6 }, { path: 'D:\음악\a.mp3', inPoint: 2, outPoint: 6 }], settings, totalSec: 7.5 };
+
+  it('덕킹 켬: 이어 붙이기 → 길이 맞춤 → 페이드 → 볼륨 → sidechaincompress → amix (스냅샷)', () => {
+    const args = buildFinalCommand('joined.mov', 'out.mp4', fmt, mus);
+    const f = args[args.indexOf('-filter_complex') + 1];
+    expect(f).toContain('concat=n=2:v=0:a=1,apad,atrim=end=7.500000,afade=t=in:st=0:d=1,afade=t=out:st=4.500000:d=3,volume=0.3[bgm]');
+    expect(f).toContain('[bgm][sc]sidechaincompress=threshold=0.05:ratio=8:attack=20:release=400[duck]');
+    expect(f).toContain('amix=inputs=2:normalize=0:duration=first[aout]');
+    expect(args).toMatchSnapshot();
+  });
+
+  it('덕킹 끔·페이드 끔', () => {
+    const f = buildFinalCommand('j.mov', 'o.mp4', fmt, { ...mus, settings: { ...settings, ducking: false, fadeIn: 0, fadeOut: 0 } });
+    const fc = f[f.indexOf('-filter_complex') + 1];
+    expect(fc).not.toContain('sidechaincompress');
+    expect(fc).not.toContain('afade');
+    expect(fc).toContain('[voice0][bgm]amix=inputs=2:normalize=0:duration=first[aout]');
+  });
+
+  it('음악이 없으면 영상 소리 그대로', () => {
+    const args = buildFinalCommand('j.mov', 'o.mp4', fmt);
+    expect(args).not.toContain('-filter_complex');
+    expect(args.slice(0, 6)).toEqual(['-i', 'j.mov', '-map', '0:v:0', '-map', '0:a:0']);
+  });
+
+  it('미리보기 페이드 = 렌더 afade 직선', () => {
+    expect(musicFade(0, 10, 1, 3)).toBe(0);
+    expect(musicFade(0.5, 10, 1, 3)).toBeCloseTo(0.5);
+    expect(musicFade(5, 10, 1, 3)).toBe(1);
+    expect(musicFade(8.5, 10, 1, 3)).toBeCloseTo(0.5);
+    expect(musicFade(10, 10, 1, 3)).toBe(0);
+    expect(musicFade(0.2, 10, 0, 0)).toBe(1);
+  });
+
+  it('재생 위치의 곡과 원본 시각', () => {
+    const track = [
+      { id: 'a', mediaId: 'm', inPoint: 2, outPoint: 6, loop: false },
+      { id: 'b', mediaId: 'm', inPoint: 2, outPoint: 6, loop: true }
+    ];
+    expect(musicAt(track, 1)).toEqual({ index: 0, sourceTime: 3 });
+    expect(musicAt(track, 4.5)).toEqual({ index: 1, sourceTime: 2.5 });
+    expect(musicAt(track, 8)).toBeNull();
   });
 });

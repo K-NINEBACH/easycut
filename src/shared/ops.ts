@@ -1,6 +1,6 @@
 // 프로젝트 편집 동작 (순수 함수, Immer draft 에 직접 적용). 렌더러 store 와 테스트에서 사용.
 // 클립을 옮기거나 지우거나 자를 때 전환·자막이 같이 따라가도록 여기서 한 번에 처리한다.
-import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, Project, Speed, Subtitle, TransitionId, VideoClip } from './types';
+import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, MusicSettings, Project, Speed, Subtitle, TransitionId, VideoClip } from './types';
 import { IMAGE_DEFAULT_DURATION, MIN_CLIP_LENGTH } from './types';
 import { clipLength, isImageClip, layoutMusic, layoutTimeline } from './timeline';
 
@@ -265,6 +265,14 @@ export function fitMusicToVideo(p: Project): void {
     i++;
   }
   p.musicTrack = out;
+}
+
+/** 배경음악 설정: 볼륨 0~1, 페이드 초 (0 이면 끔), 덕킹 (PRD F5) */
+export function setMusicSettings(p: Project, m: Partial<MusicSettings>): void {
+  if (m.volume !== undefined) p.music.volume = Math.min(1, Math.max(0, Math.round(m.volume * 100) / 100));
+  if (m.fadeIn !== undefined) p.music.fadeIn = Math.max(0, m.fadeIn);
+  if (m.fadeOut !== undefined) p.music.fadeOut = Math.max(0, m.fadeOut);
+  if (m.ducking !== undefined) p.music.ducking = m.ducking;
 }
 
 export function musicEnd(p: Project): number {

@@ -279,7 +279,7 @@ function Running(props: { progress: number; eta?: number; clipIndex?: number; on
 function Failed(props: { detail: string; logPath?: string; onBack: () => void }): JSX.Element {
   const [copied, setCopied] = useState(false);
   // 미리 정해 둔 안내(원본 없음 등)는 그대로 보여주고, 그 밖의 오류는 쉬운 말로
-  const friendly = /^(원본 파일을|타임라인에|프로젝트가)/.test(props.detail) ? props.detail.split('\n')[0] : null;
+  const friendly = /^(원본 파일을|음악 파일을|타임라인에|프로젝트가)/.test(props.detail) ? props.detail.split('\n')[0] : null;
   const copy = async (): Promise<void> => {
     const text = `${props.detail}\n\n로그 파일: ${props.logPath ?? (await window.api.render.logPath()) ?? '없음'}`;
     await navigator.clipboard.writeText(text);

@@ -33,6 +33,8 @@ interface UiStore {
   toasts: Toast[];
   /** 렌더 중 편집 잠금 (PRD F9) */
   locked: boolean;
+  /** 자르기 손잡이를 끄는 동안 미리보기에 보여줄 프레임 (PRD F3) */
+  scrub: { clipId: string; sourceTime: number } | null;
 
   select: (s: Selection) => void;
   setSelectedMedia: (ids: string[]) => void;
@@ -45,6 +47,7 @@ interface UiStore {
   toast: (text: string, tone?: Toast['tone']) => void;
   dismissToast: (id: number) => void;
   setLocked: (l: boolean) => void;
+  setScrub: (s: { clipId: string; sourceTime: number } | null) => void;
 }
 
 export const MIN_PX_PER_SEC = 4;
@@ -63,6 +66,7 @@ export const useUiStore = create<UiStore>((set) => ({
   previewQuality: 'smooth',
   toasts: [],
   locked: false,
+  scrub: null,
 
   select: (selection) => set({ selection }),
   setSelectedMedia: (selectedMediaIds) => set({ selectedMediaIds }),
@@ -78,7 +82,8 @@ export const useUiStore = create<UiStore>((set) => ({
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), tone === 'error' ? 6000 : 3500);
   },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-  setLocked: (locked) => set({ locked })
+  setLocked: (locked) => set({ locked }),
+  setScrub: (scrub) => set({ scrub })
 }));
 
 export const toast = (text: string, tone?: Toast['tone']): void => useUiStore.getState().toast(text, tone);

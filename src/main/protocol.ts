@@ -81,7 +81,9 @@ export function registerMediaProtocol(access: MediaAccess): void {
     const headers: Record<string, string> = {
       'Content-Type': type,
       'Accept-Ranges': 'bytes',
-      'Cache-Control': 'no-cache'
+      'Cache-Control': 'no-cache',
+      // <video crossOrigin> → WebGL 텍스처·Web Audio 에 쓰려면 CORS 허용 필요
+      'Access-Control-Allow-Origin': '*'
     };
 
     const range = parseRange(request.headers.get('range'), size);

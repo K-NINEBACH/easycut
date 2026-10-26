@@ -7,6 +7,9 @@ import { registerMediaProtocol, registerMediaSchemePrivileges } from './protocol
 
 applyDataDirOverride();
 registerMediaSchemePrivileges();
+// 그래픽 드라이버가 막혀 있는 PC 에서도 미리보기(WebGL)가 동작하도록 소프트웨어 대체 허용.
+// 앱은 자기 화면만 그리므로(외부 웹페이지를 열지 않음) 위험이 없다.
+app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -21,7 +24,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      autoplayPolicy: 'no-user-gesture-required'
     }
   });
 

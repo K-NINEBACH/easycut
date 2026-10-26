@@ -8,6 +8,7 @@ import { MediaService } from './services/MediaService';
 import { ProjectService } from './services/ProjectService';
 import { RenderService } from './services/RenderService';
 import { SubtitleService } from './services/SubtitleService';
+import { SettingsService } from './services/SettingsService';
 import type { JobEvents } from './services/JobQueue';
 
 /** 메인 프로세스 서비스 모음 (app ready 이후 생성) */
@@ -16,6 +17,7 @@ export interface AppContext {
   media: MediaService;
   render: RenderService;
   subtitles: SubtitleService;
+  settings: SettingsService;
   jobEvents: JobEvents;
   allowedFiles: Set<string>;
   resourcesDir: string;
@@ -60,5 +62,6 @@ export function createContext(): AppContext {
     jobEvents
   );
   if (!existsSync(resourcesDir)) console.warn(`[easycut] resources 폴더가 없어요: ${resourcesDir}`);
-  return { projects, media, render, subtitles, jobEvents, allowedFiles, resourcesDir, tools };
+  const settings = new SettingsService(app.getPath('userData'));
+  return { projects, media, render, subtitles, settings, jobEvents, allowedFiles, resourcesDir, tools };
 }

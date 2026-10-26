@@ -1,3 +1,4 @@
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, shell } from 'electron';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
@@ -10,6 +11,21 @@ registerMediaSchemePrivileges();
 // 그래픽 드라이버가 막혀 있는 PC 에서도 미리보기(WebGL)가 동작하도록 소프트웨어 대체 허용.
 // 앱은 자기 화면만 그리므로(외부 웹페이지를 열지 않음) 위험이 없다.
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+
+// 예상하지 못한 오류는 앱을 끄지 않고 기록만 남긴다 (사용자 데이터 폴더/logs/main.log)
+function logError(kind: string, err: unknown): void {
+  console.error(`[easycut] ${kind}`, err);
+  try {
+    const dir = join(app.getPath('userData'), 'logs');
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, 'main.log'), `${new Date().toISOString()} ${kind} ${err instanceof Error ? err.stack : String(err)}
+`);
+  } catch {
+    // 기록 실패는 무시
+  }
+}
+process.on('uncaughtException', (e) => logError('uncaughtException', e));
+process.on('unhandledRejection', (e) => logError('unhandledRejection', e));
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -55,6 +71,8 @@ app.whenReady().then(async () => {
     resourcesDir: ctx.resourcesDir
   });
   registerIpc(ctx);
+  // 정상 종료: 다음 실행은 시작 화면부터 (비정상 종료면 이 표시가 남아 바로 복구)
+  app.on('before-quit', () => ctx.settings.set({ sessionOpen: false }));
 
   // 시작 시 FFmpeg/FFprobe 버전을 로그로 출력 (M0)
   const info = await getAppInfo(ctx);

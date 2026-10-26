@@ -10,7 +10,7 @@ files:
 extraResources:
   - from: resources/bin
     to: bin
-    filter: ['*.exe', 'LICENSE*']
+    filter: ['*.exe', '*.dll', 'LICENSE*']
   - from: resources/models
     to: models
   - from: resources/fonts

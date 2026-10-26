@@ -5,6 +5,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { IpcChannel, type AppInfo } from '@shared/ipc';
 import type { MediaItem, Project, RenderOptions } from '@shared/types';
 import type { GenerateArgs } from './services/SubtitleService';
+import type { Settings } from './services/SettingsService';
 import { safeFolderName } from '@shared/project';
 import { SUPPORTED_EXTENSIONS } from '@shared/mediaFormats';
 import { getBinaryVersion } from './ffmpeg/binaries';
@@ -31,7 +32,26 @@ export function registerIpc(ctx: AppContext): void {
   const onProjectSwitch = (): void => {
     media.cancelAll();
     ctx.allowedFiles.clear();
+    // 프로젝트를 연 상태로 표시 → 정상 종료 없이 꺼지면 다음 실행에 바로 복구 (PRD F10)
+    ctx.settings.set({ sessionOpen: true });
   };
+  // 시작: 프로젝트를 연 채로 꺼졌으면 그 프로젝트를 바로 연다. 아니면 null → 시작 화면 (PRD 5.2)
+  ipcMain.handle(IpcChannel.ProjectStartup, async () => {
+    if (!ctx.settings.get().sessionOpen) return null;
+    const last = await projects.lastProjectPath();
+    if (!last) return null;
+    onProjectSwitch();
+    return projects.open(last);
+  });
+  ipcMain.handle(IpcChannel.ProjectClose, () => {
+    media.cancelAll();
+    ctx.settings.set({ sessionOpen: false });
+  });
+  ipcMain.handle(IpcChannel.SettingsGet, () => ctx.settings.get());
+  ipcMain.handle(IpcChannel.SettingsSet, (_e, patch: Partial<Settings>) => {
+    // 렌더러는 안내 설정만 바꿀 수 있다
+    if (typeof patch.tourDone === 'boolean') ctx.settings.set({ tourDone: patch.tourDone });
+  });
   ipcMain.handle(IpcChannel.ProjectCreate, async (_e, name: string) => {
     onProjectSwitch();
     return projects.create(name);

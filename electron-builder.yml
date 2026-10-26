@@ -1,0 +1,28 @@
+appId: com.easycut.app
+productName: 쉬운편집
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - package.json
+# resources/ 폴더(ffmpeg, 모델, 폰트, LUT)는 asar 밖 process.resourcesPath 로 복사
+extraResources:
+  - from: resources/bin
+    to: bin
+    filter: ['*.exe', 'LICENSE*']
+  - from: resources/models
+    to: models
+  - from: resources/fonts
+    to: fonts
+  - from: resources/luts
+    to: luts
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-설치-${version}.${ext}
+  shortcutName: 쉬운편집

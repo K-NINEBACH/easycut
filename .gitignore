@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+*.log
+.DS_Store
+
+# 큰 바이너리는 저장소에 넣지 않음 (npm run fetch:ffmpeg 로 받기)
+resources/bin/*
+!resources/bin/.gitkeep
+resources/models/*.bin
+*.tsbuildinfo

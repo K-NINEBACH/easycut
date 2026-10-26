@@ -81,3 +81,37 @@ export const edit = (label: string, recipe: (draft: Draft<Project>) => void): vo
   useProjectStore.getState().edit(label, recipe);
 export const silent = (recipe: (draft: Draft<Project>) => void): void =>
   useProjectStore.getState().silent(recipe);
+
+/**
+ * 드래그·슬라이더처럼 연달아 바뀌는 편집 (PRD F3).
+ * 도중에는 기록 없이 화면에만 반영하고, end() 때 되돌리기 1단계로 남긴다.
+ * 도중에 들어온 silent 변경(미디어 준비 완료 등)은 지우지 않는다.
+ */
+export function liveEdit(label: string): {
+  update: (recipe: (draft: Draft<Project>) => void) => void;
+  end: () => void;
+} {
+  let inverse: Patch[] = [];
+  let last: ((draft: Draft<Project>) => void) | null = null;
+  const revert = (): Project | null => {
+    const p = getProject();
+    return p && inverse.length ? applyPatches(p, inverse) : p;
+  };
+  return {
+    update(recipe) {
+      const base = revert();
+      if (!base) return;
+      const [next, , inv] = produceWithPatches(base, recipe);
+      inverse = inv;
+      last = recipe;
+      useProjectStore.setState({ project: next });
+    },
+    end() {
+      const base = revert();
+      inverse = [];
+      if (!base) return;
+      useProjectStore.setState({ project: base });
+      if (last) edit(label, last);
+    }
+  };
+}

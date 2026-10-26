@@ -58,6 +58,8 @@ export function useShortcuts(handlers: ShortcutHandlers = {}): void {
         e.preventDefault();
         player.toggle();
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        // 슬라이더에 초점이 있으면 슬라이더 값만 바꾼다
+        if ((e.target as HTMLInputElement | null)?.type === 'range') return;
         e.preventDefault();
         const dir = e.key === 'ArrowLeft' ? -1 : 1;
         const fps = useProjectStore.getState().project?.output.fps ?? 30;

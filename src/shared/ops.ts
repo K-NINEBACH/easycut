@@ -119,6 +119,14 @@ export function setSpeed(p: Project, clipId: string, speed: Speed): void {
   c.speed = speed;
 }
 
+/** 소리 켜기/끄기, 볼륨 0~2 (PRD F3) */
+export function setClipAudio(p: Project, clipId: string, audio: { muted?: boolean; volume?: number }): void {
+  const c = p.videoTrack.find((x) => x.id === clipId);
+  if (!c) return;
+  if (audio.muted !== undefined) c.muted = audio.muted;
+  if (audio.volume !== undefined) c.volume = Math.min(2, Math.max(0, Math.round(audio.volume * 100) / 100));
+}
+
 /**
  * 나누기: 타임라인 시간 t 에서 클립을 둘로. 성공하면 새 클립 id.
  * 뒤쪽 자막은 새 클립으로 옮기고, 원래 클립 뒤에 있던 전환은 새 클립 뒤로 옮긴다.

@@ -36,14 +36,18 @@ node scripts/make-fixtures.mjs # 테스트 샘플 생성 (시스템 ffmpeg 필�
 npm run test:integration       # 실제 ffmpeg 통합 테스트
 npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, 리눅스는 xvfb-run)
 ```
+- Windows: 시스템 ffmpeg 가 없으면 `PATH="$PWD/resources/bin:$PATH"` 를 붙여 샘플 생성·통합 테스트 실행.
+- E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
+- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
+  (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).
 
 ## 진행 상황
 - [x] M0 프로젝트 셋업
 - [x] M1 미디어 불러오기
 - [x] M2 타임라인 기본 (timeline.ts, ops.ts, Undo/Redo, 자동 저장, 재연결)
-- [ ] M3 미리보기 — 엔진·WebGL·재생 구현됨. 남은 일: tests/e2e/m3-preview.mjs 의 클립 경계 멈춤 측정을
-      <video> currentTime 진행 기준으로 바꾸기 (GPU 없는 환경은 화면 갱신이 느려 캔버스 비교가 부정확)
-- [ ] M4 자르기·나누기·속도 (TrimHandles.tsx 는 아직 빈 자리)
+- [x] M3 미리보기 (경계 멈춤은 <video> currentTime 진행 기준으로 측정)
+- [x] M4 자르기·나누기·속도 (타임라인 손잡이 `Timeline/trimDrag.ts`, 꾸미기 패널 `Panel/TrimPanel.tsx`,
+      드래그·슬라이더는 `store/project.ts` 의 `liveEdit` 로 되돌리기 1단계)
 - [ ] M5 최소 렌더
 - [ ] M6 필터 (Preview/luts.ts 자리 있음) / M7 전환 (shaders.ts 에 xfade 수식 구현됨) / M8 음악 / M9 자막
 - [ ] M10 마감

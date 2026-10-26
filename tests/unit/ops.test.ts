@@ -9,12 +9,14 @@ import {
   moveClip,
   moveClipsTo,
   moveSubtitle,
+  setClipAudio,
+  setImageDuration,
   setSpeed,
   splitClip,
   trimClip
 } from '../../src/shared/ops';
 import { newProject } from '../../src/shared/project';
-import { layoutMusic, layoutTimeline, subtitleRange } from '../../src/shared/timeline';
+import { layoutMusic, layoutTimeline, sourceTime, subtitleRange } from '../../src/shared/timeline';
 import type { MediaItem, Project } from '../../src/shared/types';
 
 function media(id: string, type: MediaItem['type'], duration: number): MediaItem {
@@ -143,6 +145,43 @@ describe('trim / speed / split', () => {
       splitClip(d, d.videoTrack[0].id, 1);
     });
     expect(p.videoTrack.map((c) => c.imageDuration)).toEqual([1, 2]);
+  });
+
+  it('사진 길이는 1~10초', () => {
+    const p = produce(base(), (d) => {
+      insertMedia(d, ['img', 'img']);
+      setImageDuration(d, d.videoTrack[0].id, 0.2);
+      setImageDuration(d, d.videoTrack[1].id, 12.34);
+    });
+    expect(p.videoTrack.map((c) => c.imageDuration)).toEqual([1, 10]);
+  });
+
+  it('자르고 나눈 뒤 재생: 잘린 구간이 정확히 빠짐 (±1프레임)', () => {
+    const p = produce(start, (d) => {
+      trimClip(d, a, 1.5, 8);
+      splitClip(d, a, 3);
+      d.transitions = [];
+    });
+    const l = layoutTimeline(p.videoTrack, p.transitions);
+    const [c0, c1, c2] = p.videoTrack;
+    // 0~3초: 원본 1.5~4.5, 3~6.5초: 원본 4.5~8, 그다음 두 번째 영상 0초부터
+    expect(sourceTime(c0, l.clips[0], 0)).toBeCloseTo(1.5, 6);
+    expect(sourceTime(c0, l.clips[0], 2.999)).toBeCloseTo(4.499, 6);
+    expect(sourceTime(c1, l.clips[1], 3)).toBeCloseTo(4.5, 6);
+    expect(sourceTime(c1, l.clips[1], 6.5 - 1 / 30)).toBeCloseTo(8 - 1 / 30, 6);
+    expect(l.clips[2].start).toBeCloseTo(6.5, 6);
+    expect(sourceTime(c2, l.clips[2], 6.5)).toBe(0);
+  });
+
+  it('소리 끄기·볼륨은 0~200%', () => {
+    const p = produce(start, (d) => {
+      setClipAudio(d, a, { muted: true, volume: 3 });
+      setClipAudio(d, d.videoTrack[1].id, { volume: -1 });
+    });
+    expect(p.videoTrack.map((c) => [c.muted, c.volume])).toEqual([
+      [true, 2],
+      [false, 0]
+    ]);
   });
 });
 

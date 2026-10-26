@@ -17,7 +17,8 @@
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "check:ffmpeg": "node scripts/check-ffmpeg.mjs",
     "dist:win": "npm run build && electron-builder --win",
-    "test:integration": "vitest run --config vitest.integration.config.mts"
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "postinstall": "node node_modules/electron/install.js"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

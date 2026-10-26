@@ -13,7 +13,7 @@
 
 ## 명령어
 ```
-npm install              # 의존성 (electron 바이너리가 안 받아지면: node node_modules/electron/install.js)
+npm install              # 의존성 (postinstall 이 electron 실행 파일도 받음 — npm 이 설치 스크립트를 막아도 동작)
 npm run fetch:ffmpeg     # resources/bin 에 Windows ffmpeg.exe/ffprobe.exe (BtbN 8.1 GPL) 받기
 npm run check:ffmpeg     # 앱이 쓸 ffmpeg/ffprobe 버전 출력
 npm run dev              # 개발 실행

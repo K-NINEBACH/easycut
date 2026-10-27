@@ -9,13 +9,17 @@ const { _electron } = createRequire(import.meta.url)('playwright');
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const FIXTURES = join(ROOT, 'tests', 'fixtures');
 
-export async function launch(dataDir, { width = 1280, height = 720 } = {}) {
+/**
+ * start: 'auto' 면 시작 화면을 지나간다 (최근 프로젝트가 있으면 이어서 만들기, 없으면 새 영상 만들기).
+ * 'none' 이면 시작 화면에서 멈춘다. 새 영상의 파일 고르기 창은 취소로 자동 응답.
+ */
+export async function launch(dataDir, { width = 1280, height = 720, start = 'auto', env = {} } = {}) {
   const require = createRequire(import.meta.url);
   const app = await _electron.launch({
     executablePath: require('electron'),
     args: ['--no-sandbox', ROOT],
     cwd: ROOT,
-    env: { ...process.env, EASYCUT_DATA_DIR: dataDir, EASYCUT_TEST: '1' }
+    env: { ...process.env, EASYCUT_DATA_DIR: dataDir, EASYCUT_TEST: '1', ...env }
   });
   app.process().stderr.on('data', (d) => {
     const s = String(d);
@@ -27,7 +31,23 @@ export async function launch(dataDir, { width = 1280, height = 720 } = {}) {
   });
   win.on('pageerror', (e) => console.log('[pageerror]', e.message));
   await win.setViewportSize({ width, height });
-  await win.waitForFunction(() => window.__ezcut?.useProjectStore.getState().project);
+  await app.evaluate(({ dialog }) => {
+    dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+  });
+  await win.waitForFunction(
+    () => window.__ezcut?.useProjectStore.getState().project || document.querySelector('[data-testid=start-screen]')
+  );
+  if (start === 'auto' && (await win.locator('[data-testid=start-screen]').count())) {
+    // 최근 목록을 읽을 때까지 잠깐
+    await win.waitForTimeout(300);
+    const cont = win.locator('[data-testid=start-continue]');
+    if (await cont.isEnabled()) await cont.click();
+    else {
+      await win.locator('[data-testid=start-new]').click();
+      await win.locator('[data-testid=project-create]').click();
+    }
+    await win.waitForFunction(() => window.__ezcut?.useProjectStore.getState().project);
+  }
   return { app, win };
 }
 

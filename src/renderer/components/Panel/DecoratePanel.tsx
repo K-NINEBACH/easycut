@@ -18,7 +18,7 @@ export default function DecoratePanel(): JSX.Element {
   const setTab = useUiStore((s) => s.setPanelTab);
 
   return (
-    <section className="flex w-80 shrink-0 flex-col rounded-lg border border-gray-200 bg-white" data-testid="decorate-panel">
+    <section className="flex w-80 shrink-0 flex-col rounded-lg border border-gray-200 bg-white" data-testid="decorate-panel" data-tour="decorate">
       <h2 className="px-3 pt-2 text-sm font-semibold">꾸미기</h2>
       <div className="flex gap-1 border-b border-gray-100 px-2 py-2">
         {TABS.map((t) => (

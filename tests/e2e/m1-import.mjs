@@ -36,7 +36,8 @@ const play = await win.evaluate(async (path) => {
   document.body.appendChild(v);
   await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('video error ' + v.error?.code)); });
   await v.play();
-  await new Promise((r) => setTimeout(r, 700));
+  // CPU 가 바쁘면 시작이 늦을 수 있어 최대 3초까지 진행을 기다린다
+  for (let i = 0; i < 30 && v.currentTime <= 0.3; i++) await new Promise((r) => setTimeout(r, 100));
   const t1 = v.currentTime;
   v.currentTime = 3.2;
   await new Promise((r) => (v.onseeked = r));

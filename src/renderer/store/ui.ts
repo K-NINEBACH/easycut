@@ -37,6 +37,10 @@ interface UiStore {
   scrub: { clipId: string; sourceTime: number } | null;
   /** 영상 만들기 창 (PRD F9) */
   exportOpen: boolean;
+  /** 메뉴 › 도움말 창 */
+  helpOpen: 'shortcuts' | null;
+  /** 첫 실행 안내 (PRD 5.4) */
+  tourOpen: boolean;
 
   select: (s: Selection) => void;
   setSelectedMedia: (ids: string[]) => void;
@@ -51,6 +55,8 @@ interface UiStore {
   setLocked: (l: boolean) => void;
   setScrub: (s: { clipId: string; sourceTime: number } | null) => void;
   setExportOpen: (o: boolean) => void;
+  setHelpOpen: (h: 'shortcuts' | null) => void;
+  setTourOpen: (o: boolean) => void;
 }
 
 export const MIN_PX_PER_SEC = 4;
@@ -71,6 +77,8 @@ export const useUiStore = create<UiStore>((set) => ({
   locked: false,
   scrub: null,
   exportOpen: false,
+  helpOpen: null,
+  tourOpen: false,
 
   select: (selection) => set({ selection }),
   setSelectedMedia: (selectedMediaIds) => set({ selectedMediaIds }),
@@ -88,7 +96,9 @@ export const useUiStore = create<UiStore>((set) => ({
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   setLocked: (locked) => set({ locked }),
   setScrub: (scrub) => set({ scrub }),
-  setExportOpen: (exportOpen) => set({ exportOpen })
+  setExportOpen: (exportOpen) => set({ exportOpen }),
+  setHelpOpen: (helpOpen) => set({ helpOpen }),
+  setTourOpen: (tourOpen) => set({ tourOpen })
 }));
 
 export const toast = (text: string, tone?: Toast['tone']): void => useUiStore.getState().toast(text, tone);

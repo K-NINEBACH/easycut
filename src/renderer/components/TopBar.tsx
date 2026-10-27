@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppInfo } from '../hooks/useAppInfo';
-import { silent, useProjectStore } from '../store/project';
+import { getProject, silent, useProjectStore } from '../store/project';
+import { player } from './Preview/player';
 import { useUiStore } from '../store/ui';
 
 export default function TopBar(): JSX.Element {
@@ -29,15 +30,50 @@ export default function TopBar(): JSX.Element {
     }
   };
 
+  const goStart = async (): Promise<void> => {
+    setMenuOpen(false);
+    player.pause();
+    const p = getProject();
+    // 남은 변경을 저장하고 닫는다
+    if (p) await window.api.project.save(p);
+    await window.api.project.close();
+    useUiStore.getState().select(null);
+    useProjectStore.getState().load(null);
+  };
+  const MenuItem = (props: { onClick: () => void; testId: string; children: React.ReactNode }): JSX.Element => (
+    <button
+      className="block w-full rounded-md px-2 py-1.5 text-left hover:bg-gray-100"
+      onClick={() => {
+        setMenuOpen(false);
+        props.onClick();
+      }}
+      data-testid={props.testId}
+    >
+      {props.children}
+    </button>
+  );
+
   return (
     <header className="relative flex h-12 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3">
-      <button className="rounded-md px-3 py-1.5 text-sm hover:bg-gray-100" onClick={() => setMenuOpen((v) => !v)}>
+      <button className="rounded-md px-3 py-1.5 text-sm hover:bg-gray-100" onClick={() => setMenuOpen((v) => !v)} data-testid="menu-button">
         ≡ 메뉴
       </button>
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-          <div className="absolute top-11 left-3 z-20 w-80 rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg">
+          <div className="absolute top-11 left-3 z-20 w-80 rounded-lg border border-gray-200 bg-white p-2 text-sm shadow-lg" data-testid="menu">
+            <MenuItem onClick={() => void goStart()} testId="menu-start">
+              처음 화면으로
+            </MenuItem>
+            <p className="mt-2 px-2 text-xs font-semibold text-gray-400">도움말</p>
+            <MenuItem onClick={() => useUiStore.getState().setHelpOpen('shortcuts')} testId="menu-shortcuts">
+              단축키 보기
+            </MenuItem>
+            <MenuItem onClick={() => useUiStore.getState().setTourOpen(true)} testId="menu-tour">
+              사용 안내 다시 보기
+            </MenuItem>
+            <div className="my-2 border-t border-gray-100" />
+            <div className="px-2 pb-1">
             <p className="mb-2 font-semibold">프로그램 정보</p>
             <p className="text-gray-600">쉬운편집 {info?.appVersion ?? ''}</p>
             <p className="mt-2 break-all text-xs text-gray-500">
@@ -46,6 +82,7 @@ export default function TopBar(): JSX.Element {
             <p className="mt-1 break-all text-xs text-gray-500">
               {info?.ffprobe.version ?? info?.ffprobe.error ?? '확인 중…'}
             </p>
+            </div>
           </div>
         </>
       )}
@@ -105,6 +142,7 @@ export default function TopBar(): JSX.Element {
         onClick={() => openExport(true)}
         title={hasClips ? '영상 만들기 (Ctrl+E)' : '타임라인에 장면을 넣으면 만들 수 있어요'}
         data-testid="export-button"
+        data-tour="export"
       >
         ▶ 영상 만들기
       </button>

@@ -11,6 +11,8 @@ function subscribe<T>(channel: string, cb: (e: T) => void): () => void {
 // 렌더러는 window.api.* 로만 메인과 통신한다 (PRD 8.1, 8.2)
 const api = {
   isTest: process.env.EASYCUT_TEST === '1',
+  /** 테스트에서도 첫 실행 안내를 보여줄지 (안내 E2E 용) */
+  testTour: process.env.EASYCUT_TEST_TOUR === '1',
   app: {
     getInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IpcChannel.AppGetInfo)
   },
@@ -18,6 +20,10 @@ const api = {
     create: (name: string): Promise<Project> => ipcRenderer.invoke(IpcChannel.ProjectCreate, name),
     open: (path: string): Promise<Project> => ipcRenderer.invoke(IpcChannel.ProjectOpen, path),
     openLast: (): Promise<Project | null> => ipcRenderer.invoke(IpcChannel.ProjectOpenLast),
+    /** 연 채로 꺼졌으면 그 프로젝트, 아니면 null (시작 화면) */
+    startup: (): Promise<Project | null> => ipcRenderer.invoke(IpcChannel.ProjectStartup),
+    /** 처음 화면으로 돌아갈 때 */
+    close: (): Promise<void> => ipcRenderer.invoke(IpcChannel.ProjectClose),
     save: (project: Project): Promise<void> => ipcRenderer.invoke(IpcChannel.ProjectSave, project),
     listRecent: (): Promise<RecentProject[]> => ipcRenderer.invoke(IpcChannel.ProjectListRecent)
   },
@@ -39,6 +45,10 @@ const api = {
     pickOutput: (current: string): Promise<string | null> => ipcRenderer.invoke(IpcChannel.RenderPickOutput, current),
     start: (opts: RenderOptions): Promise<{ jobId: string }> => ipcRenderer.invoke(IpcChannel.RenderStart, opts),
     logPath: (): Promise<string | null> => ipcRenderer.invoke(IpcChannel.RenderLogPath)
+  },
+  settings: {
+    get: (): Promise<{ tourDone?: boolean }> => ipcRenderer.invoke(IpcChannel.SettingsGet),
+    set: (patch: { tourDone?: boolean }): Promise<void> => ipcRenderer.invoke(IpcChannel.SettingsSet, patch)
   },
   subtitle: {
     /** 말소리로 자막 만들기. clipIds 를 비우면 전체 영상. 결과는 jobs.onDone 의 result (Subtitle[]) */

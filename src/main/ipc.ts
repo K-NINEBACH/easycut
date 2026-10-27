@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { IpcChannel, type AppInfo } from '@shared/ipc';
 import type { MediaItem, Project, RenderOptions } from '@shared/types';
@@ -67,7 +67,12 @@ export function registerIpc(ctx: AppContext): void {
     return projects.open(last);
   });
   ipcMain.handle(IpcChannel.ProjectSave, (_e, project: Project) => projects.save(project));
-  ipcMain.handle(IpcChannel.ProjectListRecent, () => projects.listRecent());
+  ipcMain.handle(IpcChannel.ProjectListRecent, async () => {
+    const list = await projects.listRecent();
+    // 시작 화면에서 다른 프로젝트 썸네일을 보여줄 수 있게 그 파일만 허용
+    for (const r of list) if (r.thumbnailPath) ctx.allowedFiles.add(resolve(r.thumbnailPath));
+    return list;
+  });
 
   // --- 미디어 ---
   ipcMain.handle(IpcChannel.MediaPickFiles, async () => {

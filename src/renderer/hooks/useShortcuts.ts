@@ -29,7 +29,7 @@ export function useShortcuts(handlers: ShortcutHandlers = {}): void {
       if (isTyping(e.target)) return;
       const ui = useUiStore.getState();
       // 렌더 중이거나 영상 만들기 창이 떠 있으면 편집 단축키를 막는다
-      if (ui.locked || ui.exportOpen) return;
+      if (ui.locked || ui.exportOpen || ui.helpOpen || ui.tourOpen) return;
       const ctrl = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
 

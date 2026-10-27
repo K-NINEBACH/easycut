@@ -46,7 +46,8 @@ describe('렌더 명령 (PRD 9.1)', () => {
   it('fitMode 별 화면 맞춤', () => {
     expect(fitFilter('fill', 1920, 1080)).toMatchSnapshot();
     expect(fitFilter('black', 1920, 1080)).toMatchSnapshot();
-    expect(fitFilter('blur', 1280, 720)).toContain('boxblur=13');
+    // 흐린 배경은 1/4 크기에서 흐리게 한 뒤 키운다 (반경도 1/4)
+    expect(fitFilter('blur', 1280, 720)).toContain('crop=320:180,boxblur=3,scale=1280:720');
   });
 
   it('2배속: 영상 setpts, 소리 atempo (음높이 유지), 볼륨', () => {
@@ -71,9 +72,18 @@ describe('렌더 명령 (PRD 9.1)', () => {
     }
   });
 
-  it('사진: 반복 입력으로 길이만큼', () => {
+  it('사진: 한 장만 읽어 한 번 처리하고 프레임을 반복해 길이만큼', () => {
     const args = buildClipCommand(clip({ mediaId: 'p1', inPoint: 0, outPoint: 3, imageDuration: 3 }), photo, fmt, 90, 'o.mov');
-    expect(args.slice(0, 8)).toEqual(['-loop', '1', '-framerate', '30', '-t', '3.000000', '-i', 'D:\\사진\\a.jpg']);
+    expect(args.slice(0, 2)).toEqual(['-i', 'D:\\사진\\a.jpg']);
+    expect(filterOf(args)).toContain('loop=loop=89:size=1,setpts=N/(30*TB)');
+    expect(filterOf(args)).toContain('trim=end_frame=90');
+  });
+
+  it('영상: 프레임 줄이기·크기 줄이기를 무거운 HDR 변환보다 먼저', () => {
+    const f = filterOf(buildClipCommand(clip(), { ...video, isHdr: true }, fmt, 135, 'o.mov'));
+    const at = (s: string): number => f.indexOf(s);
+    expect(at('fps=30')).toBeLessThan(at('zscale'));
+    expect(at("scale=w='trunc(iw*min(1,max(1920/iw,1080/ih))/2)*2':h=-2")).toBeLessThan(at('zscale'));
   });
 
   it('HDR 은 SDR 로 톤매핑', () => {
@@ -82,6 +92,25 @@ describe('렌더 명령 (PRD 9.1)', () => {
 
   it('최종 인코딩: H.264 High + AAC 192k + faststart (스냅샷)', () => {
     expect(buildFinalCommand('D:\\cache\\joined.mov', 'D:\\내 동영상\\여행.mp4', fmt)).toMatchSnapshot();
+  });
+
+  it('최종 인코딩 안에서 바로 잇기: 전환 → 자막 → 음악 입력 번호가 이어진다', () => {
+    const chain = {
+      inputs: [
+        { path: 'c0.mov', frames: 90 },
+        { path: 'c1.mov', frames: 60 }
+      ],
+      joins: [{ xfade: 'fade', overlapFrames: 18 }]
+    };
+    const music = { clips: [{ path: 'm.mp3', inPoint: 0, outPoint: 10 }], settings: { volume: 0.3, fadeIn: 2, fadeOut: 3, ducking: true }, totalSec: 4.4 };
+    const args = buildFinalCommand(chain, 'out.mp4', fmt, music, { assFile: 'subs.ass', fontsDir: 'fonts' });
+    expect(args.filter((a, i) => args[i - 1] === '-i')).toEqual(['c0.mov', 'c1.mov', 'm.mp3']);
+    const f = filterOf(args);
+    expect(f).toContain('[v0][v1]xfade=transition=fade:duration=0.600000:offset=2.400000,fps=30[x1]');
+    expect(f).toContain('[x1]ass=filename=subs.ass:fontsdir=fonts[vout]');
+    expect(f).toContain('[2:a]aresample');
+    expect(f).toContain('[y1]aformat=sample_fmts=fltp');
+    expect(args).toMatchSnapshot();
   });
 
   it('이어 붙이기 목록: 한글·공백·작은따옴표 경로', () => {

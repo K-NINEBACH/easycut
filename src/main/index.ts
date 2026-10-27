@@ -74,14 +74,14 @@ app.whenReady().then(async () => {
   // 정상 종료: 다음 실행은 시작 화면부터 (비정상 종료면 이 표시가 남아 바로 복구)
   app.on('before-quit', () => ctx.settings.set({ sessionOpen: false }));
 
-  // 시작 시 FFmpeg/FFprobe 버전을 로그로 출력 (M0)
-  const info = await getAppInfo(ctx);
-  for (const bin of [info.ffmpeg, info.ffprobe]) {
-    if (bin.version) console.log(`[easycut] ${bin.name}: ${bin.version} (${bin.path})`);
-    else console.error(`[easycut] ${bin.name} 실행 실패: ${bin.path} — ${bin.error}`);
-  }
-
+  // 창을 먼저 띄운다. FFmpeg/FFprobe 버전 확인(M0 로그)은 첫 실행 때 백신 검사 등으로 몇 초 걸릴 수 있어 기다리지 않는다
   createWindow();
+  void getAppInfo(ctx).then((info) => {
+    for (const bin of [info.ffmpeg, info.ffprobe]) {
+      if (bin.version) console.log(`[easycut] ${bin.name}: ${bin.version} (${bin.path})`);
+      else console.error(`[easycut] ${bin.name} 실행 실패: ${bin.path} — ${bin.error}`);
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -23,7 +23,8 @@ export function proxySize(width: number, height: number): { w: number; h: number
 /** 미리보기용 프록시: H.264 720p 30fps, 탐색이 빠르도록 키프레임 0.5초 간격 */
 export function buildVideoProxyCommand(media: MediaItem, output: string): string[] {
   const { w, h } = proxySize(media.width ?? 1280, media.height ?? 720);
-  const vf = [media.isHdr ? HDR_TO_SDR : null, `scale=${w}:${h}`, `fps=${PROXY_FPS}`, 'setsar=1', 'format=yuv420p']
+  // 프레임·크기를 먼저 줄인 뒤 HDR 변환 (4K 60fps HDR 원본이면 변환할 화면이 1/18)
+  const vf = [`fps=${PROXY_FPS}`, `scale=${w}:${h}`, media.isHdr ? HDR_TO_SDR : null, 'setsar=1', 'format=yuv420p']
     .filter(Boolean)
     .join(',');
   const args = ['-i', media.path, '-map', '0:v:0'];
@@ -105,10 +106,14 @@ export function fitFilter(mode: FitMode, w: number, h: number): string {
   const contain = `scale=${w}:${h}:force_original_aspect_ratio=decrease:force_divisible_by=2`;
   if (mode === 'fill') return `[in]${cover}[out]`;
   if (mode === 'black') return `[in]${contain},pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=black[out]`;
-  // 흐린 배경: 미리보기 셰이더와 같은 세기 (1080p 기준 boxblur=20)
-  const radius = Math.max(1, Math.round((20 * h) / 1080));
+  // 흐린 배경: 미리보기 셰이더와 같은 세기 (1080p 기준 boxblur=20).
+  // 1/4 크기에서 흐리게(반경도 1/4) 한 뒤 키운다: 모양은 같고 계산은 훨씬 적다
+  const bw = Math.max(2, Math.round(w / 8) * 2);
+  const bh = Math.max(2, Math.round(h / 8) * 2);
+  const radius = Math.max(1, Math.round((5 * h) / 1080));
   return (
-    `[in]split[bg0][fg0];[bg0]${cover},boxblur=${radius}[bg];[fg0]${contain}[fg];` +
+    `[in]split[bg0][fg0];[bg0]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh},` +
+    `boxblur=${radius},scale=${w}:${h}[bg];[fg0]${contain}[fg];` +
     `[bg][fg]overlay=(W-w)/2:(H-h)/2[out]`
   );
 }
@@ -140,20 +145,25 @@ export function buildClipCommand(
 
   const args: string[] = [];
   if (image) {
-    args.push('-loop', '1', '-framerate', String(fps), '-t', seconds.toFixed(6), '-i', imagePath ?? media.path);
+    // 사진은 한 장만 읽어 한 번만 처리하고, 처리한 프레임을 반복한다 (아래 loop)
+    args.push('-i', imagePath ?? media.path);
   } else {
     args.push('-ss', clip.inPoint.toFixed(6), '-t', (clip.outPoint - clip.inPoint).toFixed(6), '-i', media.path);
   }
   if (!useSourceAudio) args.push('-f', 'lavfi', '-i', `anullsrc=r=${AUDIO_RATE}:cl=stereo`);
 
-  const pre: string[] = [];
+  // 순서가 속도를 좌우한다: 먼저 출력 fps 로 프레임을 줄이고(60fps 원본이면 절반),
+  // 화면을 덮을 만큼만 남기고 크기를 줄인 뒤(4K 원본이면 1/4) 무거운 HDR 변환·화면 맞춤·필터를 한다
+  const pre: string[] = [image ? 'setpts=PTS-STARTPTS' : `setpts=(PTS-STARTPTS)/${clip.speed}`];
+  if (!image) pre.push(`fps=${fps}`);
+  pre.push(`scale=w='trunc(iw*min(1,max(${w}/iw,${h}/ih))/2)*2':h=-2`);
   if (media.isHdr && !image) pre.push(HDR_TO_SDR);
-  pre.push(image ? 'setpts=PTS-STARTPTS' : `setpts=(PTS-STARTPTS)/${clip.speed}`);
   const video =
     `[0:v]${pre.join(',')}[in];` +
     fitFilter(clip.fitMode, w, h) +
     // 필터: 미리보기와 같은 LUT, GPU 텍스처와 같은 삼선형 보간 (PRD F7)
     `;[out]${lutFile ? `lut3d=file=${lutFile}:interp=trilinear,` : ''}` +
+    (image ? `loop=loop=${frames - 1}:size=1,setpts=N/(${fps}*TB),` : '') +
     // 끝이 모자라면 마지막 프레임을 늘려서라도 정확히 frames 개
     `fps=${fps},setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=1,trim=end_frame=${frames}[v]`;
 
@@ -194,8 +204,10 @@ export interface ChainJoin {
   overlapFrames: number;
 }
 
+// 중간 파일: 무손실에 가까운 빠른 인코딩 (PRD 9.1). 1080p 측정에서 veryfast crf16 보다
+// 약 1.9배 빠르고 화질(SSIM)은 더 높다. 대신 파일이 약 2.7배 크지만 다 만들면 지운다.
 const INTERMEDIATE_OUT = (fps: number): string[] => [
-  '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '16', '-pix_fmt', 'yuv420p', '-r', String(fps),
+  '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '14', '-pix_fmt', 'yuv420p', '-r', String(fps),
   ...SDR_TAGS,
   '-c:a', 'pcm_s16le', '-ar', String(AUDIO_RATE), '-ac', '2'
 ];
@@ -210,9 +222,15 @@ export function chainFrames(inputs: ChainInput[], joins: ChainJoin[]): number {
  * xfade 는 두 입력의 시간 단위·프레임레이트가 같아야 해서 매 단계 뒤에 fps 를 다시 건다.
  */
 export function buildChainCommand(inputs: ChainInput[], joins: ChainJoin[], fmt: RenderFormat, output: string): string[] {
-  const { fps } = fmt;
   const args: string[] = [];
   for (const x of inputs) args.push('-i', x.path);
+  const g = chainGraph(inputs, joins, fmt.fps);
+  args.push('-filter_complex', g.filters.join(';'), '-map', `[${g.v}]`, '-map', inputs.length > 1 ? `[${g.a}]` : '0:a', ...INTERMEDIATE_OUT(fmt.fps), '-f', 'mov', output);
+  return args;
+}
+
+/** 잇기 필터 조각. 입력 i 는 -i 순서 i 번 (영상 [i:v], 소리 [i:a]). 반환: 마지막 영상·소리 이름 (대괄호 없이) */
+function chainGraph(inputs: ChainInput[], joins: ChainJoin[], fps: number): { filters: string[]; v: string; a: string } {
   const f: string[] = inputs.map((_, i) => `[${i}:v]fps=${fps}[v${i}]`);
   let v = 'v0';
   let a = '0:a';
@@ -235,8 +253,7 @@ export function buildChainCommand(inputs: ChainInput[], joins: ChainJoin[], fmt:
     v = nv;
     a = na;
   }
-  args.push('-filter_complex', f.join(';'), '-map', `[${v}]`, '-map', inputs.length > 1 ? `[${a}]` : '0:a', ...INTERMEDIATE_OUT(fps), '-f', 'mov', output);
-  return args;
+  return { filters: f, v, a };
 }
 
 /** 전환이 하나도 없으면 다시 인코딩하지 않고 그대로 이어 붙인다 */
@@ -267,29 +284,44 @@ export interface BurnSubtitles {
   fontsDir: string;
 }
 
+/** 최종 인코딩 입력: 이어 붙인 파일 하나, 또는 최종 인코딩 안에서 바로 이을 조각들 (잇기 인코딩 한 번 절약) */
+export type FinalInput = string | { inputs: ChainInput[]; joins: ChainJoin[] };
+
 /**
  * 3단계: 최종 인코딩 (PRD 9.3). 자막은 ASS 로 굽고, 배경음악이 있으면 이어 붙이고 페이드·볼륨·덕킹 후 영상 소리와 섞는다.
  */
 export function buildFinalCommand(
-  input: string,
+  input: FinalInput,
   output: string,
   fmt: RenderFormat,
   music?: MusicMix,
   subtitles?: BurnSubtitles
 ): string[] {
-  const args = ['-i', input];
+  const args: string[] = [];
+  const f: string[] = [];
+  // 영상·소리 출발점 (filter 안에서 쓰는 이름)
+  let srcV = '0:v';
+  let srcA = '0:a';
   let audioMap = '0:a:0';
   let videoMap = '0:v:0';
-  const f: string[] = [];
+  if (typeof input === 'string') args.push('-i', input);
+  else {
+    for (const x of input.inputs) args.push('-i', x.path);
+    const g = chainGraph(input.inputs, input.joins, fmt.fps);
+    f.push(...g.filters);
+    [srcV, srcA] = [g.v, g.a];
+    [videoMap, audioMap] = [`[${g.v}]`, `[${g.a}]`];
+  }
+  const firstMusic = typeof input === 'string' ? 1 : input.inputs.length;
   if (subtitles) {
-    f.push(`[0:v]ass=filename=${subtitles.assFile}:fontsdir=${subtitles.fontsDir}[vout]`);
+    f.push(`[${srcV}]ass=filename=${subtitles.assFile}:fontsdir=${subtitles.fontsDir}[vout]`);
     videoMap = '[vout]';
   }
   if (music && music.clips.length > 0) {
     const { clips, settings, totalSec } = music;
     for (const c of clips) args.push('-ss', c.inPoint.toFixed(6), '-t', (c.outPoint - c.inPoint).toFixed(6), '-i', c.path);
     const norm = `aresample=${AUDIO_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS`;
-    f.push(...clips.map((_, i) => `[${i + 1}:a]${norm}[m${i}]`));
+    f.push(...clips.map((_, i) => `[${i + firstMusic}:a]${norm}[m${i}]`));
     const bed = [
       'apad',
       `atrim=end=${totalSec.toFixed(6)}`,
@@ -298,7 +330,7 @@ export function buildFinalCommand(
       `volume=${settings.volume}`
     ].join(',');
     f.push(`${clips.map((_, i) => `[m${i}]`).join('')}concat=n=${clips.length}:v=0:a=1,${bed}[bgm]`);
-    f.push(`[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo[voice0]`);
+    f.push(`[${srcA}]aformat=sample_fmts=fltp:channel_layouts=stereo[voice0]`);
     if (settings.ducking) {
       f.push('[voice0]asplit=2[voice][sc]', `[bgm][sc]${DUCKING}[duck]`, '[voice][duck]amix=inputs=2:normalize=0:duration=first[aout]');
     } else {

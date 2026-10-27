@@ -31,6 +31,15 @@ npm run dist:win         # NSIS 설치 파일 (Windows에서 실행)
 - 배포 시 `resources/*` 는 electron-builder `extraResources` 로 `process.resourcesPath` 아래에 복사.
 - `resources/bin/*`, `resources/models/*.bin` 은 git 에 넣지 않는다.
 
+## 속도 (2026-10 최적화)
+- 중간 파일은 `ultrafast crf14` (PRD 9.1 "무손실에 가깝게", veryfast crf16 보다 약 1.9배 빠르고 화질↑, 파일은 약 2.7배).
+- 장면 처리·프록시 필터 순서: 프레임 줄이기(fps) → 크기 줄이기(화면 덮을 만큼) → HDR 변환 → 화면 맞춤 → 필터.
+  흐린 배경은 1/4 크기에서 흐리게. 사진은 한 번만 처리하고 loop 로 반복.
+- 전환이 있으면 잇기를 최종 인코딩 안에서 한다 (`buildFinalCommand` 가 조각 목록도 받음). 16개 넘으면 묶음만 먼저 이음.
+- 장면 동시 처리 수 = CPU 코어 3개당 1개 (2~4).
+- 재기: `PATH=resources/bin:$PATH BENCH_CLIPS=12 npx vitest run --config vitest.bench.config.mts --silent=false`
+  (i5-8500 6코어, 장면 12개+전환: 61.5초 → 35.7초)
+
 ## 디자인
 - 색·모서리·그림자 토큰과 공통 부품 클래스(`ez-panel`, `ez-btn-primary/secondary/soft`, `ez-icon-btn`, `ez-seg`, `ez-input`)는
   `src/renderer/index.css` 한 곳. 회색 단계(gray-50~900)도 시안 색으로 덮어써 있음. 아이콘은 lucide-react.

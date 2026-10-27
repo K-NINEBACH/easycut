@@ -11,12 +11,14 @@ import { SUPPORTED_EXTENSIONS } from '@shared/mediaFormats';
 import { getBinaryVersion } from './ffmpeg/binaries';
 import type { AppContext } from './context';
 
-export async function getAppInfo(ctx: Pick<AppContext, 'tools'>): Promise<AppInfo> {
-  const [ffmpeg, ffprobe] = await Promise.all([
-    getBinaryVersion('ffmpeg', ctx.tools.ffmpeg),
-    getBinaryVersion('ffprobe', ctx.tools.ffprobe)
-  ]);
-  return { appVersion: app.getVersion(), platform: process.platform, ffmpeg, ffprobe };
+let appInfo: Promise<AppInfo> | null = null;
+
+/** 앱·FFmpeg 버전. 실행 중에는 바뀌지 않으므로 한 번만 확인한다 (매번 ffmpeg 를 두 번 실행하지 않게) */
+export function getAppInfo(ctx: Pick<AppContext, 'tools'>): Promise<AppInfo> {
+  appInfo ??= Promise.all([getBinaryVersion('ffmpeg', ctx.tools.ffmpeg), getBinaryVersion('ffprobe', ctx.tools.ffprobe)]).then(
+    ([ffmpeg, ffprobe]) => ({ appVersion: app.getVersion(), platform: process.platform, ffmpeg, ffprobe })
+  );
+  return appInfo;
 }
 
 function focusedWindow(): BrowserWindow | undefined {

@@ -1,6 +1,7 @@
 // 영상 만들기 (PRD F9, 9장).
 // 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 자막 굽기·배경음악 섞어 최종 인코딩.
 import { existsSync } from 'node:fs';
+import { cpus } from 'node:os';
 import { copyFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { buildAss, buildSrt, FONTS, visibleSubtitles } from '@shared/subtitles';
@@ -20,17 +21,18 @@ import {
   chainFrames,
   type ChainInput,
   type ChainJoin,
+  type FinalInput,
   type RenderFormat
 } from '../ffmpeg/commands';
 import { JobQueue, type JobContext, type JobEvents } from './JobQueue';
 import { mapLimit, type Tools } from './MediaService';
 
-/** 단계별 진행률 가중치 (PRD 9.3): 장면 처리 / 잇기 / 최종 인코딩 */
-const WEIGHTS = [60, 20, 20];
+/** 단계별 진행률 가중치 (PRD 9.3): 장면 처리 / 잇기 / 최종 인코딩 (잇기는 대개 최종 인코딩 안에서 함) */
+const WEIGHTS = [55, 10, 35];
 /** 한 번에 잇는 장면 수. 넘으면 묶음별로 먼저 잇고 묶음끼리 다시 잇는다 (PRD 9.2) */
 export const CHAIN_GROUP = 16;
-/** 장면 동시 처리 개수 (PRD 9.1) */
-const CLIP_CONCURRENCY = 2;
+/** 장면 동시 처리 개수 (PRD 9.1: 기본 2개, CPU 코어 수 기준 조정 → 코어 3개당 1개, 2~4개) */
+const CLIP_CONCURRENCY = Math.min(4, Math.max(2, Math.floor(cpus().length / 3)));
 
 /** 사용자에게 그대로 보여줄 수 있는 실패 이유 */
 export class RenderError extends Error {}
@@ -145,7 +147,9 @@ export class RenderService {
       report(1, 0);
       const joined = join(work, 'joined.mov');
       const inputs: ChainInput[] = parts.map((path, i) => ({ path, frames: frames[i] }));
-      const joinedFrames = await this.chain(inputs, joins, fmt, joined, work, ctx, logPath, (f) => report(1, f));
+      const { input: finalInput, frames: joinedFrames } = await this.chain(inputs, joins, fmt, joined, work, ctx, logPath, (f) =>
+        report(1, f)
+      );
 
       // 3단계: 최종 인코딩
       report(2, 0);
@@ -159,7 +163,7 @@ export class RenderService {
         await writeFile(join(work, 'subs.ass'), buildAss(layout, project.subtitles, project.defaultSubtitleStyle));
         burn = { assFile: 'subs.ass', fontsDir: 'fonts' };
       }
-      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, partPath, fmt, mix, burn), {
+      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(finalInput, partPath, fmt, mix, burn), {
         cwd: work,
         signal: ctx.signal,
         logPath,
@@ -184,7 +188,11 @@ export class RenderService {
     }
   }
 
-  /** 중간 파일들을 하나로 잇는다. 전환이 없으면 다시 인코딩하지 않음, 많으면 묶음 단위로. 반환: 결과 프레임 수 */
+  /**
+   * 중간 파일들을 이을 준비. 전환이 없으면 다시 인코딩 없이 이어 붙인 파일 하나,
+   * 전환이 있으면 최종 인코딩 안에서 바로 이을 조각들(장면이 많으면 묶음별로 먼저 이은 파일들).
+   * 반환: 최종 인코딩 입력과 결과 프레임 수
+   */
   private async chain(
     inputs: ChainInput[],
     joins: ChainJoin[],
@@ -194,27 +202,25 @@ export class RenderService {
     ctx: JobContext,
     logPath: string | undefined,
     onProgress: (f: number) => void
-  ): Promise<number> {
+  ): Promise<{ input: FinalInput; frames: number }> {
     const total = chainFrames(inputs, joins);
     const run = (args: string[], frames: number, done: number): Promise<void> =>
       runFfmpeg(this.tools.ffmpeg, args, {
         signal: ctx.signal,
         logPath,
         durationSec: frames / fmt.fps,
-        onProgress: (f) => onProgress(Math.min(1, (done + f * frames) / (total * 2)))
+        onProgress: (f) => onProgress(Math.min(1, (done + f * frames) / total))
       });
 
     if (joins.every((j) => !j.xfade)) {
       const listPath = join(work, 'list.txt');
       await writeFile(listPath, buildConcatList(inputs.map((x) => x.path)));
       await run(buildConcatCopyCommand(listPath, output), total, 0);
-      return total;
+      return { input: output, frames: total };
     }
-    if (inputs.length <= CHAIN_GROUP) {
-      await run(buildChainCommand(inputs, joins, fmt, output), total, total);
-      return total;
-    }
-    // 묶음별로 잇고, 묶음 경계의 전환으로 묶음끼리 다시 잇는다
+    // 잇기는 최종 인코딩 안에서: 영상을 한 번 덜 인코딩한다
+    if (inputs.length <= CHAIN_GROUP) return { input: { inputs, joins }, frames: total };
+    // 묶음별로 먼저 잇고, 묶음끼리는 최종 인코딩에서 묶음 경계의 전환으로 잇는다
     const groups: ChainInput[] = [];
     const groupJoins: ChainJoin[] = [];
     let done = 0;
@@ -229,7 +235,9 @@ export class RenderService {
       groups.push({ path, frames });
       if (from + CHAIN_GROUP < inputs.length) groupJoins.push(joins[from + CHAIN_GROUP - 1]);
     }
-    await run(buildChainCommand(groups, groupJoins, fmt, output), total, total);
-    return total;
+    if (groups.length <= CHAIN_GROUP) return { input: { inputs: groups, joins: groupJoins }, frames: total };
+    // 장면이 아주 많으면(256개 초과) 묶음끼리도 먼저 잇는다
+    await run(buildChainCommand(groups, groupJoins, fmt, output), total, 0);
+    return { input: output, frames: total };
   }
 }

@@ -36,8 +36,8 @@ function ClipBlock({ clip, layout, media, pps, dimmed }: Props): JSX.Element {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`absolute top-0 h-full cursor-grab overflow-hidden rounded-md border-2 bg-gray-700 active:cursor-grabbing ${
-        selected ? 'z-10 border-yellow-400' : 'border-white/70'
+      className={`absolute top-0 h-full cursor-grab overflow-hidden rounded-[5px] border-2 bg-clip-video active:cursor-grabbing ${
+        selected ? 'z-10 border-primary' : 'border-clip-video hover:brightness-105'
       } ${dimmed ? 'opacity-40' : ''}`}
       style={{ left: layout.start * pps, width, height: TRACK.video }}
       onClick={(e) => {
@@ -86,12 +86,12 @@ function ClipBlock({ clip, layout, media, pps, dimmed }: Props): JSX.Element {
         </div>
       )}
 
-      <div className="pointer-events-none absolute top-0.5 left-1 flex gap-1 text-[10px] font-semibold text-white">
+      <div className="pointer-events-none absolute top-1 left-1.5 flex gap-1 text-[10px] font-semibold text-white">
         {width > 50 && (
-          <span className="max-w-full truncate rounded bg-black/55 px-1">{media?.fileName ?? '없는 파일'}</span>
+          <span className="max-w-full truncate rounded-md bg-black/55 px-1.5 py-px">{media?.fileName ?? '없는 파일'}</span>
         )}
-        {clip.speed !== 1 && <span className="rounded bg-brand-600 px-1">{clip.speed}배</span>}
-        {clip.muted && <span className="rounded bg-black/55 px-1">소리 끔</span>}
+        {clip.speed !== 1 && <span className="rounded-md bg-brand-600 px-1.5 py-px">{clip.speed}배</span>}
+        {clip.muted && <span className="rounded-md bg-black/55 px-1.5 py-px">소리 끔</span>}
       </div>
       {media && media.proxyStatus !== 'ready' && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50 text-[11px] text-white">

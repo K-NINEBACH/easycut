@@ -21,9 +21,9 @@ export default function EditorScreen(): JSX.Element {
     }
   });
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-canvas">
       <TopBar />
-      <div className="flex min-h-0 flex-1 gap-2 p-2">
+      <div className="flex min-h-0 flex-1 gap-3 p-3">
         <MediaBin />
         <PreviewArea />
         <DecoratePanel />

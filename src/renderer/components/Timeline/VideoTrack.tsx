@@ -106,7 +106,7 @@ export default function VideoTrack({ layout, pps }: Props): JSX.Element {
   return (
     <div
       ref={ref}
-      className="relative h-full rounded-md bg-gray-50"
+      className="relative h-full rounded-md bg-white ring-1 ring-line"
       onDragOver={onNativeDragOver}
       onDragLeave={(e) => {
         if (!ref.current?.contains(e.relatedTarget as Node)) setIndicator(null);
@@ -122,7 +122,7 @@ export default function VideoTrack({ layout, pps }: Props): JSX.Element {
       data-testid="video-track"
     >
       {clips.length === 0 && indicator === null && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-200 text-sm text-gray-400">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed border-brand-200 bg-brand-50/40 text-sm text-gray-400">
           여기로 영상을 끌어다 놓으세요
         </div>
       )}
@@ -137,7 +137,7 @@ export default function VideoTrack({ layout, pps }: Props): JSX.Element {
         })}
         <DragOverlay dropAnimation={null}>
           {dragged ? (
-            <div className="h-16 w-28 overflow-hidden rounded-md border-2 border-brand-500 bg-gray-800 shadow-xl">
+            <div className="h-16 w-28 overflow-hidden rounded-lg border-2 border-brand-500 bg-gray-800 shadow-lg">
               {draggedMedia?.thumbnailPath && (
                 <img src={mediaUrl(draggedMedia.thumbnailPath)} className="h-full w-full object-cover" alt="" />
               )}

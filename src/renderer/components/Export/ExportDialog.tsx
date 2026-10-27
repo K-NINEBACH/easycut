@@ -98,13 +98,13 @@ function Dialog(): JSX.Element {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="export-dialog">
-      <div className="w-[480px] rounded-xl bg-white p-6 shadow-2xl" role="dialog" aria-label="영상 만들기">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]" data-testid="export-dialog">
+      <div className="w-[480px] rounded-2xl border border-line bg-white p-6 shadow-lg" role="dialog" aria-label="영상 만들기">
         {phase.kind === 'setup' && (
           <>
-            <h3 className="text-lg font-semibold">영상 만들기</h3>
+            <h3 className="text-xl font-semibold text-ink">영상 만들기</h3>
             <button
-              className="mt-4 w-full rounded-xl bg-brand-600 py-4 text-lg font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="ez-btn-primary mt-5 h-14 w-full text-lg"
               disabled={!outputPath}
               onClick={() => void start()}
               data-testid="export-start"
@@ -115,7 +115,7 @@ function Dialog(): JSX.Element {
               {RES_LABEL[quality]} · {fps}fps · MP4
             </p>
 
-            <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm">
+            <div className="mt-4 rounded-xl bg-gray-50 p-3.5 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-gray-500">저장 위치</span>
                 <button className="text-xs text-brand-600 hover:underline" onClick={() => void changeLocation()}>
@@ -167,7 +167,7 @@ function Dialog(): JSX.Element {
             )}
 
             <div className="mt-5 flex justify-end">
-              <button className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100" onClick={close}>
+              <button className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100" onClick={close}>
                 닫기
               </button>
             </div>
@@ -185,7 +185,7 @@ function Dialog(): JSX.Element {
 
         {phase.kind === 'done' && (
           <>
-            <h3 className="text-lg font-semibold">영상을 다 만들었어요 🎉</h3>
+            <h3 className="text-xl font-semibold text-ink">영상을 다 만들었어요 🎉</h3>
             <p className="mt-2 break-all rounded-md bg-gray-50 p-2 text-xs text-gray-600" data-testid="export-result">
               {phase.outputPath}
             </p>
@@ -196,13 +196,13 @@ function Dialog(): JSX.Element {
             )}
             <div className="mt-4 flex gap-2">
               <button
-                className="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                className="ez-btn-primary flex-1 py-2.5 text-sm"
                 onClick={() => void window.api.shell.openFile(phase.outputPath)}
               >
                 ▶ 영상 재생하기
               </button>
               <button
-                className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm hover:bg-gray-50"
+                className="ez-btn-secondary flex-1 py-2.5 text-sm"
                 onClick={() => void window.api.shell.openFolder(phase.outputPath)}
               >
                 폴더 열기
@@ -215,7 +215,7 @@ function Dialog(): JSX.Element {
               유튜브에 올리는 방법 보기
             </button>
             <div className="mt-4 flex justify-end">
-              <button className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100" onClick={close}>
+              <button className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100" onClick={close}>
                 닫기
               </button>
             </div>
@@ -243,7 +243,7 @@ function Choice<T extends string | number>(props: {
         {props.options.map((o) => (
           <button
             key={String(o.v)}
-            className={`flex-1 rounded-md border py-1.5 disabled:cursor-not-allowed disabled:opacity-40 ${
+            className={`flex-1 rounded-lg border transition-colors py-1.5 disabled:cursor-not-allowed disabled:opacity-40 ${
               props.value === o.v ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
             }`}
             disabled={o.disabled}
@@ -266,7 +266,7 @@ function Running(props: { progress: number; eta?: number; clipIndex?: number; on
   const pct = Math.round(props.progress * 100);
   return (
     <>
-      <h3 className="text-lg font-semibold">영상을 만들고 있어요…</h3>
+      <h3 className="text-xl font-semibold text-ink">영상을 만들고 있어요…</h3>
       <div className="mt-4 flex items-center gap-3">
         <div className="h-14 w-24 shrink-0 overflow-hidden rounded-md bg-gray-800">
           {thumb && <img src={mediaUrl(thumb)} className="h-full w-full object-cover" alt="" />}
@@ -285,12 +285,12 @@ function Running(props: { progress: number; eta?: number; clipIndex?: number; on
         </div>
       </div>
       <div className="mt-4 h-3 overflow-hidden rounded-full bg-gray-100">
-        <div className="h-full rounded-full bg-brand-600 transition-[width]" style={{ width: `${pct}%` }} data-testid="export-progress" />
+        <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${pct}%` }} data-testid="export-progress" />
       </div>
       <p className="mt-1 text-right text-xs text-gray-500">{pct}%</p>
       <p className="mt-3 text-xs text-gray-400">만드는 동안에는 편집할 수 없어요.</p>
       <div className="mt-4 flex justify-end">
-        <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50" onClick={props.onCancel} data-testid="export-cancel">
+        <button className="ez-btn-secondary px-5 py-2.5 text-sm" onClick={props.onCancel} data-testid="export-cancel">
           취소
         </button>
       </div>
@@ -309,15 +309,15 @@ function Failed(props: { detail: string; logPath?: string; onBack: () => void })
   };
   return (
     <>
-      <h3 className="text-lg font-semibold">영상을 만들지 못했어요</h3>
+      <h3 className="text-xl font-semibold text-ink">영상을 만들지 못했어요</h3>
       <p className="mt-2 text-sm text-gray-600" data-testid="export-error">
         {friendly ?? '처리하는 중에 문제가 생겼어요. 아래 버튼으로 오류 내용을 복사해서 알려주시면 원인을 찾는 데 도움이 돼요.'}
       </p>
       <div className="mt-5 flex justify-end gap-2">
-        <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50" onClick={() => void copy()}>
+        <button className="ez-btn-secondary px-5 py-2.5 text-sm" onClick={() => void copy()}>
           {copied ? '복사했어요 ✓' : '오류 내용 복사'}
         </button>
-        <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" onClick={props.onBack}>
+        <button className="ez-btn-primary px-5 py-2.5 text-sm" onClick={props.onBack}>
           돌아가기
         </button>
       </div>

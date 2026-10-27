@@ -41,7 +41,7 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-sm [&>*]:shrink-0" data-testid="trim-panel">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm [&>*]:shrink-0" data-testid="trim-panel">
       <BigPreview clip={clip} media={media} />
 
       {image ? (
@@ -62,7 +62,7 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
 
       <div className="flex items-center gap-2">
         <button
-          className="flex-1 rounded-md bg-brand-600 py-2 font-semibold text-white hover:bg-brand-700"
+          className="ez-btn-primary flex-1 py-2.5"
           onClick={playThis}
           data-testid="play-clip"
         >
@@ -77,8 +77,8 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
             {SPEEDS.map((s) => (
               <button
                 key={s}
-                className={`flex-1 rounded-md border py-1.5 ${
-                  clip.speed === s ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
+                className={`flex-1 rounded-lg border py-1.5 transition-colors ${
+                  clip.speed === s ? 'border-brand-300 bg-brand-100 font-semibold text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
                 }`}
                 onClick={() => edit('속도 바꾸기', (p) => ops.setSpeed(p, clip.id, s))}
                 aria-pressed={clip.speed === s}
@@ -97,8 +97,8 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
             {FITS.map((f) => (
               <button
                 key={f.id}
-                className={`flex-1 rounded-md border py-1.5 ${
-                  clip.fitMode === f.id ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
+                className={`flex-1 rounded-lg border py-1.5 transition-colors ${
+                  clip.fitMode === f.id ? 'border-brand-300 bg-brand-100 font-semibold text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
                 }`}
                 onClick={() => edit('화면 채우기 바꾸기', (p) => ops.setFitMode(p, clip.id, f.id))}
                 aria-pressed={clip.fitMode === f.id}
@@ -117,8 +117,8 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
           <Field label="소리">
             <div className="flex items-center gap-2">
               <button
-                className={`w-20 shrink-0 rounded-md border py-1.5 ${
-                  clip.muted ? 'border-gray-200 text-gray-500' : 'border-brand-600 bg-brand-50 text-brand-700'
+                className={`w-20 shrink-0 rounded-lg border py-1.5 transition-colors ${
+                  clip.muted ? 'border-line bg-white text-gray-500' : 'border-brand-300 bg-brand-100 text-brand-700'
                 }`}
                 onClick={() =>
                   edit(clip.muted ? '소리 켜기' : '소리 끄기', (p) => ops.setClipAudio(p, clip.id, { muted: !clip.muted }))
@@ -172,9 +172,9 @@ function BigPreview({ clip, media }: { clip: VideoClip; media?: MediaItem }): JS
     src = mediaUrl(media.thumbnailPath);
   }
   return (
-    <div className="relative h-32 w-full overflow-hidden rounded-md bg-black">
+    <div className="relative h-36 w-full overflow-hidden rounded-xl bg-gray-900">
       {src && <img src={src} className="h-full w-full object-contain" alt="" />}
-      <span className="absolute bottom-1 left-1 max-w-[90%] truncate rounded bg-black/60 px-1.5 text-[11px] text-white">
+      <span className="absolute bottom-1.5 left-1.5 max-w-[90%] truncate rounded-md bg-black/60 px-1.5 py-px text-[11px] text-white">
         {media?.fileName ?? '없는 파일'}
       </span>
     </div>
@@ -192,20 +192,20 @@ function RangeBar({ clip, media }: { clip: VideoClip; media: MediaItem }): JSX.E
   };
   const handle = (side: TrimSide): JSX.Element => (
     <div
-      className="absolute top-0 z-10 flex h-full w-3 -translate-x-1/2 cursor-ew-resize items-center justify-center rounded-sm bg-yellow-400 hover:bg-yellow-300"
+      className="absolute top-0 z-10 flex h-full w-3 -translate-x-1/2 cursor-ew-resize items-center justify-center rounded-md bg-brand-500 shadow-sm hover:bg-brand-400"
       style={{ left: pct(side === 'in' ? clip.inPoint : clip.outPoint) }}
       onPointerDown={drag(side)}
       title={side === 'in' ? '시작 지점' : '끝 지점'}
       data-testid={side === 'in' ? 'range-in' : 'range-out'}
     >
-      <div className="h-4 w-0.5 rounded bg-yellow-800/60" />
+      <div className="h-4 w-0.5 rounded bg-white/90" />
     </div>
   );
   return (
     <Field label="앞뒤 자르기">
-      <div ref={ref} className="relative h-8 rounded-md bg-gray-200" data-testid="range-bar">
+      <div ref={ref} className="relative h-9 rounded-lg bg-gray-100" data-testid="range-bar">
         <div
-          className="absolute top-0 h-full rounded-sm bg-brand-500/40"
+          className="absolute top-0 h-full bg-brand-200/80"
           style={{ left: pct(clip.inPoint), width: pct(clip.outPoint - clip.inPoint) }}
         />
         {handle('in')}

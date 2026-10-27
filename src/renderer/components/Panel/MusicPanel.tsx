@@ -33,15 +33,15 @@ export default function MusicPanel(): JSX.Element {
 
   if (!music) return <div />;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-sm [&>*]:shrink-0" data-testid="music-panel">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm [&>*]:shrink-0" data-testid="music-panel">
       <button
-        className="rounded-md bg-brand-600 py-2 font-semibold text-white hover:bg-brand-700"
+        className="ez-btn-primary py-2.5"
         onClick={() => void addMusic()}
         data-testid="music-add"
       >
         ♪ 음악 넣기
       </button>
-      <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-800">
+      <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
         유튜브에 올릴 때는 저작권 없는 음악을 써주세요. 유튜브 오디오 보관함을 추천해요.
       </p>
 
@@ -56,7 +56,7 @@ export default function MusicPanel(): JSX.Element {
             </p>
           )}
           <button
-            className="rounded-md border border-gray-200 py-2 hover:bg-gray-50 disabled:opacity-50"
+            className="ez-btn-secondary py-2.5 disabled:opacity-50"
             onClick={fit}
             disabled={!hasVideo}
             title="영상보다 길면 끝을 자르고, 짧으면 처음부터 반복해요"

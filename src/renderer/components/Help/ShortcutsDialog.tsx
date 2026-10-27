@@ -28,21 +28,21 @@ export default function ShortcutsDialog(): JSX.Element | null {
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={close}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]" onClick={close}>
       <div
-        className="w-[440px] rounded-xl bg-white p-6 shadow-2xl"
+        className="w-[440px] rounded-2xl border border-line bg-white p-6 shadow-lg"
         role="dialog"
         aria-label="단축키"
         onClick={(e) => e.stopPropagation()}
         data-testid="shortcuts-dialog"
       >
-        <h3 className="text-lg font-semibold">단축키</h3>
+        <h3 className="text-xl font-semibold text-ink">단축키</h3>
         <table className="mt-4 w-full text-sm">
           <tbody>
             {SHORTCUTS.map(([k, v]) => (
               <tr key={k} className="border-b border-gray-100 last:border-0">
                 <td className="py-1.5 pr-4">
-                  <kbd className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
+                  <kbd className="rounded-md border border-line border-b-2 bg-gray-50 px-1.5 py-0.5 font-mono text-xs text-ink">{k}</kbd>
                 </td>
                 <td className="py-1.5 text-gray-700">{v}</td>
               </tr>
@@ -50,7 +50,7 @@ export default function ShortcutsDialog(): JSX.Element | null {
           </tbody>
         </table>
         <div className="mt-5 flex justify-end">
-          <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" onClick={close}>
+          <button className="ez-btn-primary px-5 py-2.5 text-sm" onClick={close}>
             닫기
           </button>
         </div>

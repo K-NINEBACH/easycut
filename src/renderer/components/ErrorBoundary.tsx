@@ -21,13 +21,13 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, { 
         <p className="text-sm text-gray-600">작업 내용은 자동으로 저장돼 있어요. 아래 버튼을 눌러 다시 열어 주세요.</p>
         <div className="flex gap-2">
           <button
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            className="ez-btn-primary px-5 py-2.5 text-sm"
             onClick={() => this.setState({ error: null })}
           >
             다시 시도
           </button>
           <button
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50"
+            className="ez-btn-secondary px-5 py-2.5 text-sm"
             onClick={() => void navigator.clipboard.writeText(`${error.message}\n${error.stack ?? ''}`)}
           >
             오류 내용 복사

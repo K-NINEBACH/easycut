@@ -50,8 +50,8 @@ export default function FileDropZone(): JSX.Element | null {
 
   if (!over) return null;
   return (
-    <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-brand-600/15">
-      <div className="rounded-2xl border-4 border-dashed border-brand-500 bg-white/90 px-10 py-8 text-xl font-semibold text-brand-700">
+    <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-brand-500/10 backdrop-blur-[2px]">
+      <div className="rounded-2xl border-[3px] border-dashed border-brand-400 bg-white/95 px-12 py-10 text-xl font-semibold text-brand-700 shadow-lg">
         여기에 놓으면 불러와요
       </div>
     </div>

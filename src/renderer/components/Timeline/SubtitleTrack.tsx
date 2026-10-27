@@ -11,7 +11,7 @@ export default function SubtitleTrack({ layout, pps }: { layout: TimelineLayout;
   const selection = useUiStore((s) => s.selection);
   return (
     <div
-      className="relative h-full rounded-md bg-gray-50"
+      className="relative h-full rounded-md bg-white ring-1 ring-line"
       data-testid="subtitle-track"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) useUiStore.getState().select(null);
@@ -73,8 +73,8 @@ function SubtitleBlock(props: { sub: Subtitle; start: number; end: number; pps: 
 
   return (
     <div
-      className={`absolute top-1 bottom-1 cursor-grab touch-none overflow-hidden rounded border px-1.5 text-[11px] leading-6 select-none ${
-        selected ? 'z-10 border-yellow-500 bg-yellow-200' : 'border-amber-300 bg-amber-100'
+      className={`absolute top-1 bottom-1 cursor-grab touch-none overflow-hidden rounded-[5px] border-2 px-2 text-[11px] leading-5 font-medium text-clip-sub-text select-none ${
+        selected ? 'z-10 border-primary bg-clip-sub-on' : 'border-clip-sub bg-clip-sub hover:brightness-105'
       }`}
       style={{ left: start * pps, width: Math.max(4, (end - start) * pps) }}
       onPointerDown={begin('move')}
@@ -87,12 +87,12 @@ function SubtitleBlock(props: { sub: Subtitle; start: number; end: number; pps: 
       {selected && (
         <>
           <div
-            className="absolute top-0 left-0 h-full w-2 cursor-ew-resize bg-yellow-500/70"
+            className="absolute top-0 left-0 h-full w-2 cursor-ew-resize bg-primary"
             onPointerDown={begin('start')}
             data-testid="subtitle-handle-start"
           />
           <div
-            className="absolute top-0 right-0 h-full w-2 cursor-ew-resize bg-yellow-500/70"
+            className="absolute top-0 right-0 h-full w-2 cursor-ew-resize bg-primary"
             onPointerDown={begin('end')}
             data-testid="subtitle-handle-end"
           />

@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import { ImagePlus, Plus } from 'lucide-react';
 import { useProjectStore } from '../../store/project';
 import { useUiStore } from '../../store/ui';
 import { pickAndImport, sortMedia } from '../../store/mediaActions';
@@ -14,6 +15,13 @@ export default function MediaBin(): JSX.Element {
   const anchor = useRef<string | null>(null);
 
   const sorted = useMemo(() => sortMedia(media, sort), [media, sort]);
+  const videoTrack = useProjectStore((s) => s.project?.videoTrack);
+  const musicTrack = useProjectStore((s) => s.project?.musicTrack);
+  // 타임라인에 이미 넣은 파일은 "사용 중" 표시
+  const used = useMemo(
+    () => new Set([...(videoTrack ?? []), ...(musicTrack ?? [])].map((c) => c.mediaId)),
+    [videoTrack, musicTrack]
+  );
 
   const onSelect = (id: string, e: React.MouseEvent): void => {
     if (e.shiftKey && anchor.current) {
@@ -33,17 +41,17 @@ export default function MediaBin(): JSX.Element {
 
   return (
     <section
-      className="flex w-64 shrink-0 flex-col rounded-lg border border-gray-200 bg-white"
+      className="ez-panel flex w-60 shrink-0 flex-col overflow-hidden"
       data-tour="import"
       onClick={(e) => {
         if (e.target === e.currentTarget) setSelected([]);
       }}
     >
-      <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
-        <h2 className="text-sm font-semibold">내 영상/사진</h2>
+      <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+        <h2 className="ez-title">내 영상/사진</h2>
         {media.length > 0 && (
           <select
-            className="rounded border border-gray-200 px-1 py-0.5 text-xs text-gray-600"
+            className="rounded-lg border border-line bg-white px-1.5 py-1 text-xs text-body focus:border-primary focus:outline-none"
             value={sort}
             onChange={(e) => setSort(e.target.value as 'date' | 'name')}
             aria-label="정렬"
@@ -55,13 +63,16 @@ export default function MediaBin(): JSX.Element {
       </div>
 
       {media.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-sm text-gray-400">
-          <p>아직 불러온 파일이 없어요</p>
-          <p className="text-xs">영상·사진·음악 파일이나 폴더를 창에 끌어다 놓아도 돼요</p>
+        <div className="m-3 flex flex-1 flex-col items-center justify-center gap-2 rounded-[10px] border-2 border-dashed border-brand-200 bg-inner p-4 text-center text-sm text-body">
+          <span className="mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-white text-primary shadow-sm">
+            <ImagePlus size={22} />
+          </span>
+          <p className="font-semibold text-ink">아직 불러온 파일이 없어요</p>
+          <p className="text-xs text-faint">영상·사진·음악 파일이나 폴더를 창에 끌어다 놓아도 돼요</p>
         </div>
       ) : (
         <div
-          className="grid flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-2"
+          className="grid flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto px-4 py-1"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelected([]);
           }}
@@ -73,19 +84,18 @@ export default function MediaBin(): JSX.Element {
               selected={selected.includes(m.id)}
               selectedIds={selected}
               onSelect={(e) => onSelect(m.id, e)}
-              onDoubleClick={() => addMediaToTimeline([m.id])}
+              used={used.has(m.id)}
+              onAdd={() => addMediaToTimeline([m.id])}
             />
           ))}
         </div>
       )}
 
-      <div className="flex flex-col gap-2 p-3">
+      <div className="flex flex-col gap-2 border-t border-line p-4">
         <BinActions />
-        <button
-          className="w-full rounded-lg bg-brand-50 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100"
-          onClick={() => void pickAndImport()}
-        >
-          + 불러오기
+        <button className="ez-btn-soft h-10 w-full text-sm" onClick={() => void pickAndImport()}>
+          <Plus size={18} />
+          불러오기
         </button>
       </div>
     </section>
@@ -99,7 +109,7 @@ function BinActions(): JSX.Element | null {
   if (selected.length < 2) return null;
   return (
     <button
-      className="w-full rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+      className="ez-btn-primary h-10 w-full text-sm"
       onClick={() => {
         addMediaToTimeline(selected);
         setSelected([]);

@@ -25,7 +25,7 @@ export default function LiveSlider(props: {
     <label className="flex flex-col gap-1.5">
       <span className="flex justify-between text-xs font-medium text-gray-500">
         {props.label}
-        <span>{props.format(props.value)}</span>
+        <span className="font-semibold text-brand-600 tabular-nums">{props.format(props.value)}</span>
       </span>
       <input
         type="range"
@@ -34,6 +34,7 @@ export default function LiveSlider(props: {
         step={props.step}
         value={props.value}
         disabled={props.disabled}
+        style={{ '--fill': `${((props.value - props.min) / (props.max - props.min)) * 100}%` } as React.CSSProperties}
         onChange={(e) => {
           const v = Number(e.target.value);
           live.current ??= liveEdit(props.editLabel);

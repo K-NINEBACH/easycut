@@ -78,9 +78,9 @@ export default function SpeechDialog({ onClose }: { onClose: () => void }): JSX.
   }, [jobId]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="speech-dialog">
-      <div className="w-[420px] rounded-xl bg-white p-6 shadow-2xl" role="dialog" aria-label="말소리로 자막 만들기">
-        <h3 className="text-lg font-semibold">🎤 말소리로 자막 만들기</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]" data-testid="speech-dialog">
+      <div className="w-[420px] rounded-2xl border border-line bg-white p-6 shadow-lg" role="dialog" aria-label="말소리로 자막 만들기">
+        <h3 className="text-xl font-semibold text-ink">🎤 말소리로 자막 만들기</h3>
 
         {phase.kind === 'choose' && (
           <>
@@ -94,8 +94,8 @@ export default function SpeechDialog({ onClose }: { onClose: () => void }): JSX.
               ).map(([v, label]) => (
                 <button
                   key={v}
-                  className={`flex-1 rounded-md border py-2 text-sm disabled:opacity-40 ${
-                    range === v ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
+                  className={`flex-1 rounded-lg border transition-colors py-2 text-sm disabled:opacity-40 ${
+                    range === v ? 'border-brand-300 bg-brand-100 font-semibold text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                   disabled={v === 'selected' && !selectedClip}
                   title={v === 'selected' && !selectedClip ? '타임라인에서 장면을 먼저 눌러 주세요' : undefined}
@@ -107,11 +107,11 @@ export default function SpeechDialog({ onClose }: { onClose: () => void }): JSX.
               ))}
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100" onClick={onClose}>
+              <button className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100" onClick={onClose}>
                 닫기
               </button>
               <button
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                className="ez-btn-primary px-5 py-2.5 text-sm"
                 onClick={begin}
                 data-testid="speech-start"
               >
@@ -127,11 +127,11 @@ export default function SpeechDialog({ onClose }: { onClose: () => void }): JSX.
               이 장면들에는 이미 자막이 있어요. 기존 자막을 지우고 새로 만들까요?
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100" onClick={() => setPhase({ kind: 'choose' })}>
+              <button className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100" onClick={() => setPhase({ kind: 'choose' })}>
                 취소
               </button>
               <button
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                className="ez-btn-primary px-5 py-2.5 text-sm"
                 onClick={() => void start()}
                 data-testid="speech-overwrite"
               >
@@ -147,11 +147,11 @@ export default function SpeechDialog({ onClose }: { onClose: () => void }): JSX.
               말소리를 듣고 있어요… {Math.round(phase.progress * 100)}%
             </p>
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-gray-100">
-              <div className="h-full rounded-full bg-brand-600 transition-[width]" style={{ width: `${phase.progress * 100}%` }} />
+              <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${phase.progress * 100}%` }} />
             </div>
             <div className="mt-5 flex justify-end">
               <button
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50"
+                className="ez-btn-secondary px-5 py-2.5 text-sm"
                 onClick={() => void window.api.jobs.cancel(phase.jobId)}
                 data-testid="speech-cancel"
               >
@@ -167,7 +167,7 @@ export default function SpeechDialog({ onClose }: { onClose: () => void }): JSX.
               {phase.message}
             </p>
             <div className="mt-5 flex justify-end">
-              <button className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100" onClick={() => setPhase({ kind: 'choose' })}>
+              <button className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100" onClick={() => setPhase({ kind: 'choose' })}>
                 돌아가기
               </button>
             </div>

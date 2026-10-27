@@ -17,7 +17,7 @@ export default function TrimHandles({
   const srcPerPx = image ? 1 / pps : clip.speed / pps;
   const handle = (side: TrimSide): JSX.Element => (
     <div
-      className={`absolute top-0 z-20 flex h-full w-2.5 cursor-ew-resize items-center justify-center bg-yellow-400 hover:bg-yellow-300 ${
+      className={`absolute top-0 z-20 flex h-full w-2.5 cursor-ew-resize items-center justify-center bg-primary hover:bg-brand-400 ${
         side === 'in' ? 'left-0' : 'right-0'
       }`}
       onPointerDown={(e) => startTrimDrag(e, clip, side, srcPerPx)}
@@ -25,7 +25,7 @@ export default function TrimHandles({
       title={side === 'in' ? '끌어서 앞부분 자르기' : image ? '끌어서 사진 길이 바꾸기' : '끌어서 뒷부분 자르기'}
       data-testid={side === 'in' ? 'trim-in' : 'trim-out'}
     >
-      <div className="h-5 w-0.5 rounded bg-yellow-800/60" />
+      <div className="h-5 w-0.5 rounded bg-white/90" />
     </div>
   );
   return (

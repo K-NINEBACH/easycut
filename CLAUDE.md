@@ -31,6 +31,13 @@ npm run dist:win         # NSIS 설치 파일 (Windows에서 실행)
 - 배포 시 `resources/*` 는 electron-builder `extraResources` 로 `process.resourcesPath` 아래에 복사.
 - `resources/bin/*`, `resources/models/*.bin` 은 git 에 넣지 않는다.
 
+## 디자인
+- 색·모서리·그림자 토큰과 공통 부품 클래스(`ez-panel`, `ez-btn-primary/secondary/soft`, `ez-icon-btn`, `ez-seg`, `ez-input`)는
+  `src/renderer/index.css` 한 곳. 회색 단계(gray-50~900)도 시안 색으로 덮어써 있음. 아이콘은 lucide-react.
+- 타임라인 색: 영상 `clip-video`, 자막 `clip-sub`, 음악 `clip-music`, 전환 ◆ `clip-fade`, 재생 위치 `playhead`.
+- 슬라이더 채움은 `style={{ '--fill': '40%' }}` 로 넘긴다 (`LiveSlider` 참고).
+- 앱 아이콘: `build/icon.svg` 고친 뒤 `npx electron scripts/make-icon.mjs` → `build/icon.png`.
+
 ## 테스트
 ```
 npm test                       # 단위 테스트 (vitest)

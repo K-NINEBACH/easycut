@@ -1,3 +1,4 @@
+import { Check, Music, Plus } from 'lucide-react';
 import type { MediaItem } from '@shared/types';
 import { formatTime } from '@shared/format';
 import { mediaUrl } from '@shared/mediaUrl';
@@ -8,24 +9,27 @@ interface Props {
   item: MediaItem;
   selected: boolean;
   selectedIds: string[];
+  /** 타임라인에 이미 들어가 있는지 */
+  used: boolean;
   onSelect: (e: React.MouseEvent) => void;
-  onDoubleClick?: () => void;
+  /** 타임라인에 넣기 (두 번 누르기와 같음) */
+  onAdd?: () => void;
 }
 
-export default function MediaCard({ item, selected, selectedIds, onSelect, onDoubleClick }: Props): JSX.Element {
+export default function MediaCard({ item, selected, selectedIds, used, onSelect, onAdd }: Props): JSX.Element {
   const ready = item.proxyStatus === 'ready';
   const pct = Math.round((item.proxyProgress ?? 0) * 100);
 
   return (
     <div
-      className={`group relative cursor-pointer overflow-hidden rounded-md border-2 ${
-        selected ? 'border-brand-500' : 'border-transparent hover:border-gray-300'
-      }`}
+      className={`group relative cursor-pointer rounded-[10px] bg-white p-1 transition-colors active:bg-brand-50 ${
+        selected ? 'ring-2 ring-primary' : 'ring-1 ring-line hover:shadow-sm hover:ring-brand-300'
+      } ${item.missing ? 'opacity-45' : ''}`}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(e);
       }}
-      onDoubleClick={onDoubleClick}
+      onDoubleClick={onAdd}
       draggable={!item.missing}
       onDragStart={(e) => {
         // 선택된 카드를 끌면 선택한 것 전부, 아니면 이 카드만
@@ -37,16 +41,13 @@ export default function MediaCard({ item, selected, selectedIds, onSelect, onDou
       data-testid="media-card"
       data-media-id={item.id}
     >
-      <div className="relative aspect-video bg-gray-800">
+      <div className="relative aspect-video overflow-hidden rounded-lg bg-gray-900">
         {item.type === 'audio' ? (
-          <div className="flex h-full items-center justify-center text-3xl text-white/80">♪</div>
+          <div className="flex h-full items-center justify-center bg-clip-music text-clip-music-text">
+            <Music size={24} />
+          </div>
         ) : item.thumbnailPath ? (
-          <img
-            src={mediaUrl(item.thumbnailPath)}
-            className="h-full w-full object-contain"
-            draggable={false}
-            alt=""
-          />
+          <img src={mediaUrl(item.thumbnailPath)} className="h-full w-full object-contain" draggable={false} alt="" />
         ) : null}
 
         {item.missing ? (
@@ -57,16 +58,41 @@ export default function MediaCard({ item, selected, selectedIds, onSelect, onDou
           <Overlay>준비 중 {pct}%</Overlay>
         ) : null}
 
+        {selected && (
+          <span className="absolute top-1 left-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary text-white shadow-sm">
+            <Check size={12} strokeWidth={3} />
+          </span>
+        )}
+        {used && !selected && (
+          <span className="absolute top-1 left-1 rounded-md bg-black/60 px-1.5 py-px text-[10px] font-medium text-white">사용 중</span>
+        )}
+        {/* 마우스를 올리면 [+] 로 바로 타임라인에 넣기 */}
+        {onAdd && !item.missing && (
+          <button
+            className="absolute top-1 right-1 hidden h-6 w-6 items-center justify-center rounded-md bg-primary text-white shadow-sm group-hover:flex hover:bg-brand-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd();
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+            title={item.type === 'audio' ? '배경음악으로 넣기' : '타임라인에 넣기'}
+            aria-label="타임라인에 넣기"
+            data-testid="media-add"
+          >
+            <Plus size={16} strokeWidth={2.5} />
+          </button>
+        )}
+
         {item.duration > 0 && (
-          <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[10px] text-white tabular-nums">
+          <span className="absolute right-1 bottom-1 rounded-md bg-black/65 px-1.5 py-px text-[10px] font-medium text-white tabular-nums">
             {formatTime(item.duration)}
           </span>
         )}
         {item.type === 'image' && (
-          <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[10px] text-white">사진</span>
+          <span className="absolute right-1 bottom-1 rounded-md bg-black/65 px-1.5 py-px text-[10px] font-medium text-white">사진</span>
         )}
       </div>
-      <p className="truncate px-1 py-0.5 text-[11px] text-gray-600">{item.fileName}</p>
+      <p className="truncate px-0.5 pt-1 text-[11px] text-body">{item.fileName}</p>
     </div>
   );
 }
@@ -75,7 +101,7 @@ function Overlay({ children, tone }: { children: React.ReactNode; tone?: 'error'
   return (
     <div
       className={`absolute inset-0 flex items-center justify-center text-xs font-semibold text-white ${
-        tone === 'error' ? 'bg-red-700/70' : 'bg-black/55'
+        tone === 'error' ? 'bg-danger/75' : 'bg-gray-900/55'
       }`}
     >
       {children}

@@ -72,9 +72,9 @@ export default function SubtitlePanel(): JSX.Element {
     edit(target === 'all' ? '자막 모양 바꾸기' : '이 자막 모양 바꾸기', (p) => ops.setSubtitleStyle(p, target, st));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-sm [&>*]:shrink-0" data-testid="subtitle-panel">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm [&>*]:shrink-0" data-testid="subtitle-panel">
       <button
-        className="rounded-md bg-brand-600 py-2 font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+        className="ez-btn-primary py-2.5 disabled:opacity-50"
         onClick={add}
         disabled={!hasClips}
         data-testid="subtitle-add"
@@ -82,7 +82,7 @@ export default function SubtitlePanel(): JSX.Element {
         ＋ 자막 추가
       </button>
       <button
-        className="rounded-md border border-gray-200 py-2 hover:bg-gray-50 disabled:opacity-50"
+        className="ez-btn-secondary py-2.5 disabled:opacity-50"
         onClick={() => setSpeechOpen(true)}
         disabled={!hasClips}
         data-testid="speech-open"
@@ -115,8 +115,8 @@ export default function SubtitlePanel(): JSX.Element {
           {SUBTITLE_PRESETS.map((pr) => (
             <button
               key={pr.id}
-              className={`overflow-hidden rounded-md border-2 text-xs ${
-                shown.presetId === pr.id ? 'border-brand-600 font-semibold text-brand-700' : 'border-transparent hover:border-gray-300'
+              className={`overflow-hidden rounded-xl border-2 bg-white text-xs transition-colors ${
+                shown.presetId === pr.id ? 'border-brand-500 bg-brand-50 font-semibold text-brand-700' : 'border-line text-gray-600 hover:border-brand-300'
               }`}
               onClick={() => setStyle({ presetId: pr.id })}
               aria-pressed={shown.presetId === pr.id}
@@ -145,8 +145,8 @@ export default function SubtitlePanel(): JSX.Element {
           {list.map(({ s, r }, i) => (
             <div
               key={s.id}
-              className={`flex items-center gap-1 rounded-md border px-1.5 py-1 ${
-                s.id === selId ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100'
+              className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 ${
+                s.id === selId ? 'border-brand-300 bg-brand-50' : 'border-line'
               } ${r.hidden ? 'opacity-50' : ''}`}
               data-testid="subtitle-row"
             >
@@ -183,7 +183,7 @@ export default function SubtitlePanel(): JSX.Element {
             </div>
           ))}
           <button
-            className="mt-1 rounded-md border border-gray-200 py-2 hover:bg-gray-50"
+            className="mt-1 ez-btn-secondary py-2.5"
             onClick={() => void saveSrt()}
             data-testid="subtitle-save-srt"
           >
@@ -215,7 +215,7 @@ function SubtitleEditor({ id, text }: { id: string; text: string }): JSX.Element
   const { change, finish } = useLiveText(id);
   return (
     <textarea
-      className="min-h-16 w-full resize-y rounded-md border border-gray-200 p-2 focus:border-brand-500 focus:outline-none"
+      className="min-h-16 w-full resize-y rounded-lg border border-line p-2.5 text-ink focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none"
       value={text}
       placeholder="자막 내용을 입력하세요"
       onChange={(e) => change(e.target.value)}
@@ -232,7 +232,7 @@ function RowText({ id, text }: { id: string; text: string }): JSX.Element {
   const { change, finish } = useLiveText(id);
   return (
     <input
-      className="min-w-0 flex-1 rounded border border-transparent px-1 text-xs hover:border-gray-200 focus:border-brand-500 focus:outline-none"
+      className="min-w-0 flex-1 rounded-md border border-transparent px-1 text-xs hover:border-line focus:border-brand-500 focus:outline-none"
       value={text}
       placeholder="(빈 자막)"
       onChange={(e) => change(e.target.value)}
@@ -259,8 +259,8 @@ function Choice<T extends string>(props: {
         {props.options.map((o) => (
           <button
             key={o.id}
-            className={`flex-1 rounded-md border py-1 text-xs ${
-              props.value === o.id ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
+            className={`flex-1 rounded-lg border transition-colors py-1 text-xs ${
+              props.value === o.id ? 'border-brand-300 bg-brand-100 font-semibold text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
             }`}
             onClick={() => props.onChange(o.id)}
             aria-pressed={props.value === o.id}

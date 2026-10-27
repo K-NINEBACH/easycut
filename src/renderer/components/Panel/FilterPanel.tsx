@@ -35,13 +35,13 @@ function ClipFilter({ clip, media }: { clip: VideoClip; media?: MediaItem }): JS
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-sm [&>*]:shrink-0" data-testid="filter-panel">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm [&>*]:shrink-0" data-testid="filter-panel">
       <div className="grid grid-cols-3 gap-2">
         {FILTERS.map((f) => (
           <button
             key={f.id}
-            className={`overflow-hidden rounded-md border-2 text-xs ${
-              clip.filter === f.id ? 'border-brand-600 font-semibold text-brand-700' : 'border-transparent hover:border-gray-300'
+            className={`overflow-hidden rounded-xl border-2 bg-white text-xs transition-colors ${
+              clip.filter === f.id ? 'border-brand-500 bg-brand-50 font-semibold text-brand-700' : 'border-line text-gray-600 hover:border-brand-300'
             }`}
             onClick={() => pick(f.id)}
             aria-pressed={clip.filter === f.id}
@@ -98,7 +98,7 @@ function ClipFilter({ clip, media }: { clip: VideoClip; media?: MediaItem }): JS
       )}
 
       <button
-        className="rounded-md border border-gray-200 py-2 hover:bg-gray-50"
+        className="ez-btn-secondary py-2.5"
         onClick={applyAll}
         data-testid="filter-apply-all"
       >

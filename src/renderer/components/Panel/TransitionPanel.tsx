@@ -45,7 +45,7 @@ export default function TransitionPanel(): JSX.Element {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-sm [&>*]:shrink-0" data-testid="transition-panel">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm [&>*]:shrink-0" data-testid="transition-panel">
       <p className="text-xs text-gray-500">
         장면 {index + 1} → 장면 {index + 2}
       </p>
@@ -53,8 +53,8 @@ export default function TransitionPanel(): JSX.Element {
         {TRANSITIONS.map((t) => (
           <button
             key={t.id}
-            className={`overflow-hidden rounded-md border-2 text-xs ${
-              type === t.id ? 'border-brand-600 font-semibold text-brand-700' : 'border-transparent hover:border-gray-300'
+            className={`overflow-hidden rounded-xl border-2 bg-white text-xs transition-colors ${
+              type === t.id ? 'border-brand-500 bg-brand-50 font-semibold text-brand-700' : 'border-line text-gray-600 hover:border-brand-300'
             }`}
             onClick={() => pick(t.id)}
             aria-pressed={type === t.id}
@@ -73,8 +73,8 @@ export default function TransitionPanel(): JSX.Element {
             {TRANSITION_DURATIONS.map((d) => (
               <button
                 key={d.value}
-                className={`flex-1 rounded-md border py-1.5 ${
-                  duration === d.value ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-gray-200 hover:bg-gray-50'
+                className={`flex-1 rounded-lg border py-1.5 transition-colors ${
+                  duration === d.value ? 'border-brand-300 bg-brand-100 font-semibold text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
                 }`}
                 onClick={() => apply([selId], type, d.value, '전환 길이 바꾸기')}
                 aria-pressed={duration === d.value}
@@ -85,7 +85,7 @@ export default function TransitionPanel(): JSX.Element {
             ))}
           </div>
           {info?.tooShort ? (
-            <p className="text-xs text-orange-600" data-testid="transition-too-short">
+            <p className="text-xs text-amber-600" data-testid="transition-too-short">
               장면이 너무 짧아서 전환을 넣을 수 없어요
             </p>
           ) : info && info.duration < info.requested - 1e-6 ? (
@@ -94,7 +94,7 @@ export default function TransitionPanel(): JSX.Element {
         </div>
       )}
 
-      <button className="rounded-md border border-gray-200 py-2 hover:bg-gray-50" onClick={applyAll} data-testid="transition-apply-all">
+      <button className="ez-btn-secondary py-2.5" onClick={applyAll} data-testid="transition-apply-all">
         모든 장면에 적용
       </button>
     </div>

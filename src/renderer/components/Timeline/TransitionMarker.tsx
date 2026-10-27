@@ -35,20 +35,20 @@ export default function TransitionMarker({
     <>
       {on && (
         <div
-          className="pointer-events-none absolute top-0 z-20 rounded-sm bg-white/35 ring-1 ring-white/80"
+          className="pointer-events-none absolute top-0 z-20 rounded-md bg-white/35 ring-1 ring-white/80"
           style={{ left: next.start * pps, width: overlap * pps, height: TRACK.video }}
           data-testid="transition-overlap"
         />
       )}
       <button
-        className={`absolute z-30 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center rounded-[4px] border-2 shadow ${
+        className={`absolute z-30 flex h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center rounded-[2px] border-2 shadow-sm transition-transform hover:scale-125 ${
           selected
-            ? 'border-yellow-400 bg-yellow-300'
+            ? 'scale-125 border-white bg-clip-fade-on ring-2 ring-clip-fade-on'
             : info?.tooShort
-              ? 'border-orange-400 bg-orange-100'
+              ? 'border-white bg-[#d5dce5]'
               : on
-                ? 'border-white bg-brand-600'
-                : 'border-gray-300 bg-white hover:bg-gray-100'
+                ? 'border-white bg-clip-fade'
+                : 'border-[#d5dce5] bg-white'
         }`}
         // 아래쪽에 둔다: 가운데는 자르기 손잡이를 잡는 자리
         style={{ left: center * pps, top: TRACK.video - 12 }}

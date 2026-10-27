@@ -55,14 +55,14 @@ export default function Tour(): JSX.Element | null {
 
   return (
     <div className="fixed inset-0 z-[60]" data-testid="tour">
-      <div className="absolute inset-0 bg-black/35" />
+      
       {rect && (
         <div
-          className="pointer-events-none absolute rounded-lg ring-4 ring-yellow-400"
+          className="pointer-events-none absolute rounded-xl ring-4 ring-mint-400 shadow-[0_0_0_9999px_rgba(17,24,39,0.35)]"
           style={{ left: rect.left - 4, top: rect.top - 4, width: rect.width + 8, height: rect.height + 8 }}
         />
       )}
-      <div className="absolute rounded-xl bg-white p-5 shadow-2xl" style={{ left, top, width: W }} role="dialog" aria-label="사용 안내">
+      <div className="absolute rounded-2xl border border-line bg-white p-5 shadow-lg" style={{ left, top, width: W }} role="dialog" aria-label="사용 안내">
         <p className="text-xs text-gray-400">
           {i + 1} / {STEPS.length}
         </p>
@@ -85,7 +85,7 @@ export default function Tour(): JSX.Element | null {
               </button>
             )}
             <button
-              className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+              className="ez-btn-primary px-4 py-2 text-sm"
               onClick={() => (i < STEPS.length - 1 ? setI(i + 1) : finish())}
               data-testid="tour-next"
             >

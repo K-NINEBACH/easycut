@@ -1,12 +1,74 @@
 @import 'tailwindcss';
 
+/* 디자인 토큰 — 2026-10 디자인 시스템 "따뜻한 크리에이터 스튜디오" (ChatGPT 시안 글의 값) */
 @theme {
   --font-sans: 'Pretendard', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;
-  --color-brand-50: #eef6ff;
-  --color-brand-100: #d9eaff;
+
+  /* 주색 단계 */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
   --color-brand-500: #3b82f6;
   --color-brand-600: #2563eb;
   --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  /* 주 버튼 기본색 */
+  --color-primary: #3478f6;
+
+  /* 강조(민트) */
+  --color-mint-50: #e8f7ef;
+  --color-mint-100: #d3f3e6;
+  --color-mint-400: #4cd6ac;
+  --color-mint-500: #26b98a;
+  --color-mint-600: #20a66a;
+
+  /* 회색 단계 = 시안의 바탕·테두리·글자 색 */
+  --color-gray-50: #f8fafd;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #a3acb9;
+  --color-gray-500: #8995a7;
+  --color-gray-600: #526178;
+  --color-gray-700: #3b4a60;
+  --color-gray-800: #26344a;
+  --color-gray-900: #17243a;
+
+  --color-canvas: #f5f7fb;
+  --color-inner: #f8fafd;
+  --color-line: #e2e8f0;
+  --color-ink: #17243a;
+  --color-body: #526178;
+  --color-faint: #8995a7;
+  --color-off: #edf0f5;
+  --color-off-text: #a3acb9;
+  --color-success: #20a66a;
+  --color-warn: #e8a23a;
+  --color-danger: #e45757;
+  --color-playhead: #f04452;
+  --color-focus: #91b9ff;
+
+  /* 타임라인 블록: 바탕 / 선택 / 글자 */
+  --color-clip-video: #8bc5ff;
+  --color-clip-video-on: #4d9cf5;
+  --color-clip-video-text: #174c85;
+  --color-clip-sub: #c6b8ff;
+  --color-clip-sub-on: #a48af5;
+  --color-clip-sub-text: #49338b;
+  --color-clip-music: #a8e8d1;
+  --color-clip-music-on: #63ceab;
+  --color-clip-music-text: #176a53;
+  --color-clip-fade: #f2c66d;
+  --color-clip-fade-on: #e9a93d;
+  --color-tick: #aab4c3;
+
+  --shadow-sm: 0 1px 3px rgba(23, 36, 58, 0.06);
+  --shadow-md: 0 4px 12px rgba(23, 36, 58, 0.08);
+  --shadow-lg: 0 12px 32px rgba(23, 36, 58, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(52, 120, 246, 0.2);
 }
 
 html,
@@ -17,8 +79,113 @@ body,
 
 body {
   margin: 0;
-  background: #f3f4f6;
-  color: #1f2937;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: 14px;
   user-select: none;
   overflow: hidden;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+@layer components {
+  /* 패널: 그림자 없이 테두리와 바탕색 차이로 구분, 반경 12px */
+  .ez-panel {
+    @apply rounded-xl border border-line bg-white;
+  }
+  .ez-title {
+    @apply text-base font-semibold text-ink;
+  }
+  .ez-label {
+    @apply text-xs font-medium text-body;
+  }
+
+  /* 버튼 (높이는 쓰는 곳에서): 반경 8px, 굵기 600 */
+  .ez-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary font-semibold text-white transition-colors hover:bg-brand-600 active:bg-brand-700 disabled:bg-off disabled:text-off-text;
+  }
+  .ez-btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white font-semibold text-ink transition-colors hover:bg-brand-50 active:bg-brand-100 disabled:bg-off disabled:text-off-text disabled:hover:bg-off;
+  }
+  .ez-btn-soft {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-50 font-semibold text-primary transition-colors hover:bg-brand-100 active:bg-brand-200 disabled:bg-off disabled:text-off-text;
+  }
+  /* 아이콘 버튼 36×36 */
+  .ez-icon-btn {
+    @apply inline-flex items-center justify-center rounded-lg text-body transition-colors hover:bg-brand-50 hover:text-ink active:bg-brand-100 disabled:text-off-text disabled:hover:bg-transparent;
+  }
+
+  /* 세그먼트: 투명 → 호버 #F1F5F9 → 선택 #DBEAFE + 주색 글자 (aria-pressed) */
+  .ez-seg {
+    @apply flex-1 rounded-lg py-1.5 text-body transition-colors hover:bg-gray-100 active:bg-brand-100 disabled:text-off-text disabled:hover:bg-transparent;
+  }
+  .ez-seg[aria-pressed='true'] {
+    @apply bg-brand-100 font-semibold text-primary;
+  }
+  .ez-seg-group {
+    @apply flex gap-1 rounded-lg bg-inner p-1 ring-1 ring-line;
+  }
+
+  /* 입력칸: 반경 8px */
+  .ez-input {
+    @apply rounded-lg border border-line bg-white px-3 py-2 text-ink focus:border-primary focus:shadow-[var(--shadow-focus)] focus:outline-none;
+  }
+}
+
+/* 슬라이더: 트랙 4px #DCE3ED, 채운 구간 주색(--fill), 손잡이 12px 주색 → 호버 14px */
+input[type='range'] {
+  appearance: none;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--color-primary), var(--color-primary)) 0 / var(--fill, 0%) 100% no-repeat,
+    #dce3ed;
+}
+input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px #fff, var(--shadow-sm);
+  transition: transform 0.1s;
+}
+input[type='range']:hover::-webkit-slider-thumb {
+  transform: scale(1.17);
+}
+input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.33);
+}
+input[type='range']:disabled {
+  cursor: default;
+}
+input[type='range']:disabled::-webkit-slider-runnable-track {
+  background: #e5e7eb;
+}
+input[type='range']:disabled::-webkit-slider-thumb {
+  background: var(--color-off-text);
+  transform: none;
+}
+
+/* 얇은 스크롤바 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--color-gray-300) padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

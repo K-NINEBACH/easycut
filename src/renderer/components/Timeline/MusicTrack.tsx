@@ -47,7 +47,7 @@ export default function MusicTrack({ layout, pps }: { layout: MusicLayout[]; pps
   return (
     <div
       ref={ref}
-      className="relative h-full rounded-md bg-gray-50"
+      className="relative h-full rounded-md bg-white ring-1 ring-line"
       onDragOver={(e) => {
         if (!Array.from(e.dataTransfer.types).includes(MEDIA_DRAG_TYPE)) return;
         e.preventDefault();
@@ -95,9 +95,9 @@ function MusicBlock({ clip, layout, media, pps }: { clip: MusicClip; layout: Mus
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`absolute top-0 cursor-grab overflow-hidden rounded-md border-2 ${
-        selected ? 'z-10 border-yellow-400' : 'border-white/60'
-      } ${clip.loop ? 'bg-emerald-500' : 'bg-emerald-600'}`}
+      className={`absolute top-0 cursor-grab overflow-hidden rounded-[5px] border-2 ${
+        selected ? 'z-10 border-primary' : 'border-clip-music hover:brightness-105'
+      } ${selected ? 'bg-clip-music-on' : 'bg-clip-music'}`}
       style={{
         left: layout.start * pps,
         width,
@@ -113,9 +113,9 @@ function MusicBlock({ clip, layout, media, pps }: { clip: MusicClip; layout: Mus
       data-testid="music-clip"
     >
       <div className="pointer-events-none absolute inset-0 top-3">
-        <Waveform path={media?.waveformPath} from={clip.inPoint} to={clip.outPoint} width={width} height={TRACK.music - 16} />
+        <Waveform path={media?.waveformPath} from={clip.inPoint} to={clip.outPoint} width={width} height={TRACK.music - 16} color="rgba(23,106,83,0.55)" />
       </div>
-      <span className="pointer-events-none absolute top-0 left-1 truncate text-[10px] font-semibold text-white">
+      <span className="pointer-events-none absolute top-0 left-1.5 truncate text-[10px] font-semibold text-clip-music-text">
         ♪ {media?.fileName}
         {clip.loop ? ' (반복)' : ''}
       </span>

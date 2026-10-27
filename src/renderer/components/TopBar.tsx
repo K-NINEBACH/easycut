@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { CircleAlert, CircleCheck, LoaderCircle, Menu, Play, Redo2, Undo2 } from 'lucide-react';
+import Logo from './Logo';
 import { useAppInfo } from '../hooks/useAppInfo';
 import { getProject, silent, useProjectStore } from '../store/project';
 import { player } from './Preview/player';
@@ -42,7 +44,7 @@ export default function TopBar(): JSX.Element {
   };
   const MenuItem = (props: { onClick: () => void; testId: string; children: React.ReactNode }): JSX.Element => (
     <button
-      className="block w-full rounded-md px-2 py-1.5 text-left hover:bg-gray-100"
+      className="block w-full rounded-lg px-3 py-2 text-left text-ink hover:bg-gray-100"
       onClick={() => {
         setMenuOpen(false);
         props.onClick();
@@ -54,14 +56,20 @@ export default function TopBar(): JSX.Element {
   );
 
   return (
-    <header className="relative flex h-12 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3">
-      <button className="rounded-md px-3 py-1.5 text-sm hover:bg-gray-100" onClick={() => setMenuOpen((v) => !v)} data-testid="menu-button">
-        ≡ 메뉴
+    <header className="relative flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
+      <button
+        className="ez-icon-btn gap-1.5 px-2.5 py-2 text-sm font-medium"
+        onClick={() => setMenuOpen((v) => !v)}
+        data-testid="menu-button"
+      >
+        <Menu size={18} />
+        메뉴
       </button>
+      <Logo size={28} />
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-          <div className="absolute top-11 left-3 z-20 w-80 rounded-lg border border-gray-200 bg-white p-2 text-sm shadow-lg" data-testid="menu">
+          <div className="absolute top-13 left-4 z-20 w-80 rounded-xl border border-line bg-white p-2 text-sm shadow-lg" data-testid="menu">
             <MenuItem onClick={() => void goStart()} testId="menu-start">
               처음 화면으로
             </MenuItem>
@@ -88,7 +96,7 @@ export default function TopBar(): JSX.Element {
       )}
 
       <input
-        className="w-72 rounded-md border border-transparent px-2 py-1 font-semibold hover:border-gray-200 focus:border-brand-500 focus:outline-none"
+        className="w-72 rounded-lg border border-transparent px-2 py-1.5 text-base font-semibold text-ink hover:border-line focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none"
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={commitName}
@@ -101,50 +109,52 @@ export default function TopBar(): JSX.Element {
         }}
         aria-label="프로젝트 이름"
       />
-      <span className="text-xs text-gray-400" data-testid="save-state">
-        {saveState === 'saving' || saveState === 'dirty'
-          ? '저장 중…'
-          : saveState === 'error'
-            ? '저장하지 못했어요'
-            : '저장됨 ✓'}
+      <span className="flex items-center gap-1 text-xs text-gray-400" data-testid="save-state">
+        {saveState === 'saving' || saveState === 'dirty' ? (
+          <>
+            <LoaderCircle size={14} className="animate-spin" />
+            저장 중…
+          </>
+        ) : saveState === 'error' ? (
+          <>
+            <CircleAlert size={14} className="text-danger" />
+            저장하지 못했어요
+          </>
+        ) : (
+          <>
+            <CircleCheck size={14} className="text-success" />
+            저장됨
+          </>
+        )}
       </span>
 
       <div className="flex-1" />
 
       {info && !toolsReady && (
-        <span className="text-xs text-red-600" title={info.ffmpeg.error}>
+        <span className="text-xs text-danger" title={info.ffmpeg.error}>
           영상 도구를 찾을 수 없어요
         </span>
       )}
 
       <div className="flex gap-1">
-        <button
-          className="rounded-md px-2 py-1.5 text-lg hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
-          title="되돌리기 (Ctrl+Z)"
-          disabled={!canUndo}
-          onClick={undo}
-        >
-          ↶
+        <button className="ez-icon-btn h-9 w-9" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" disabled={!canUndo} onClick={undo}>
+          <Undo2 size={18} />
         </button>
-        <button
-          className="rounded-md px-2 py-1.5 text-lg hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
-          title="다시 하기 (Ctrl+Y)"
-          disabled={!canRedo}
-          onClick={redo}
-        >
-          ↷
+        <button className="ez-icon-btn h-9 w-9" title="다시 하기 (Ctrl+Y)" aria-label="다시 하기" disabled={!canRedo} onClick={redo}>
+          <Redo2 size={18} />
         </button>
       </div>
 
       <button
-        className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+        className="ez-btn-primary h-10 px-5 text-sm"
         disabled={!hasClips || !toolsReady}
         onClick={() => openExport(true)}
         title={hasClips ? '영상 만들기 (Ctrl+E)' : '타임라인에 장면을 넣으면 만들 수 있어요'}
         data-testid="export-button"
         data-tour="export"
       >
-        ▶ 영상 만들기
+        <Play size={16} fill="currentColor" />
+        영상 만들기
       </button>
     </header>
   );

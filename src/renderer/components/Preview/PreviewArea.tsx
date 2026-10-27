@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Maximize, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { formatTime } from '@shared/format';
 import { useUiStore } from '../../store/ui';
 import { useTimelineLayout } from '../../hooks/useTimelineLayout';
@@ -50,11 +51,14 @@ export default function PreviewArea(): JSX.Element {
   };
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col rounded-lg border border-gray-200 bg-white" data-tour="preview">
-      <div className="flex min-h-0 flex-1 items-center justify-center p-3">
+    <section className="ez-panel flex min-w-0 flex-1 flex-col overflow-hidden" data-tour="preview">
+      <h2 className="ez-title px-4 pt-3.5">미리보기</h2>
+      {/* 남은 칸 안에서 가로·세로 어느 쪽이 좁아도 16:9 를 지킨다 */}
+      <div className="mx-4 my-3 flex min-h-0 flex-1 items-center justify-center [container-type:size]">
         <div
           ref={frameRef}
-          className="relative aspect-video max-h-full w-full bg-black [container-type:inline-size]"
+          className="relative aspect-video overflow-hidden rounded-[10px] bg-gray-900 [container-type:inline-size]"
+          style={{ width: 'min(100cqw, 100cqh * 16 / 9)' }}
           onDoubleClick={fullscreen}
         >
           <canvas ref={canvasRef} className="h-full w-full" data-testid="preview-canvas" />
@@ -70,47 +74,54 @@ export default function PreviewArea(): JSX.Element {
             <Overlay>영상 파일을 찾을 수 없어요</Overlay>
           ) : null}
           {approx && (
-            <span className="absolute top-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">
+            <span className="absolute top-2 right-2 rounded-md bg-black/60 px-2 py-0.5 text-[11px] text-white">
               실제 결과와 조금 달라요
             </span>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-4 border-t border-gray-100 px-3 py-2 text-sm">
-        <div className="flex flex-1 items-center gap-1">
-          <button
-            className={`rounded px-2 py-0.5 text-xs ${quality === 'smooth' ? 'bg-gray-200 font-semibold' : 'text-gray-500'}`}
-            onClick={() => setQuality('smooth')}
-          >
-            부드럽게
-          </button>
-          <button
-            className={`rounded px-2 py-0.5 text-xs ${quality === 'sharp' ? 'bg-gray-200 font-semibold' : 'text-gray-500'}`}
-            onClick={() => setQuality('sharp')}
-          >
-            선명하게
-          </button>
+      <div className="flex items-center gap-3 px-4 pb-3 text-sm">
+        <div className="flex flex-1 items-center">
+          <div className="flex rounded-lg bg-gray-100 p-0.5" title="미리보기 화질 (결과 영상에는 영향 없어요)">
+            {(
+              [
+                ['smooth', '부드럽게'],
+                ['sharp', '선명하게']
+              ] as const
+            ).map(([q, label]) => (
+              <button
+                key={q}
+                className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                  quality === q ? 'bg-white font-semibold text-ink shadow-sm' : 'text-gray-500 hover:text-ink'
+                }`}
+                onClick={() => setQuality(q)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <button className="rounded px-2 py-1 hover:bg-gray-100" title="처음으로 (Home)" onClick={() => player.seek(0)}>
-          ◀◀
+        <button className="ez-icon-btn h-9 w-9" title="처음으로 (Home)" aria-label="처음으로" onClick={() => player.seek(0)}>
+          <SkipBack size={18} fill="currentColor" />
         </button>
         <button
-          className="w-12 rounded-full bg-gray-900 py-1.5 text-white hover:bg-gray-700"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-sm transition-colors hover:bg-brand-600 active:bg-brand-700"
           title={playing ? '멈춤 (Space)' : '재생 (Space)'}
+          aria-label={playing ? '멈춤' : '재생'}
           onClick={() => player.toggle()}
           data-testid="play-button"
         >
-          {playing ? '❚❚' : '▶'}
+          {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
         </button>
-        <button className="rounded px-2 py-1 hover:bg-gray-100" title="끝으로 (End)" onClick={() => player.seekEnd()}>
-          ▶▶
+        <button className="ez-icon-btn h-9 w-9" title="끝으로 (End)" aria-label="끝으로" onClick={() => player.seekEnd()}>
+          <SkipForward size={18} fill="currentColor" />
         </button>
-        <span className="font-mono text-gray-500 tabular-nums" data-testid="time-display">
-          {formatTime(playhead)} / {formatTime(layout.total)}
+        <span className="text-xs text-faint tabular-nums" data-testid="time-display">
+          <span className="font-semibold text-ink">{formatTime(playhead)}</span> / {formatTime(layout.total)}
         </span>
         <div className="flex flex-1 justify-end">
-          <button className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100" title="전체 화면" onClick={fullscreen}>
-            ⛶
+          <button className="ez-icon-btn h-9 w-9" title="전체 화면" aria-label="전체 화면" onClick={fullscreen}>
+            <Maximize size={18} />
           </button>
         </div>
       </div>

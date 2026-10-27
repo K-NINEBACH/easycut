@@ -22,7 +22,7 @@ export default function Ruler({ seconds, pps }: { seconds: number; pps: number }
   return (
     <div
       ref={ref}
-      className="relative cursor-pointer border-b border-gray-200 select-none"
+      className="relative cursor-pointer border-b border-line select-none"
       style={{ height: TRACK.ruler }}
       onPointerDown={(e) => {
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -35,8 +35,8 @@ export default function Ruler({ seconds, pps }: { seconds: number; pps: number }
       data-testid="ruler"
     >
       {ticks.map((t) => (
-        <div key={t} className="absolute top-0 h-full border-l border-gray-300" style={{ left: t * pps }}>
-          <span className="absolute top-0.5 left-1 text-[10px] text-gray-500 tabular-nums">{formatTime(t)}</span>
+        <div key={t} className="absolute bottom-0 h-2 border-l border-tick" style={{ left: t * pps }}>
+          <span className="absolute -top-3.5 left-1 text-[11px] font-medium text-faint tabular-nums">{formatTime(t)}</span>
         </div>
       ))}
     </div>

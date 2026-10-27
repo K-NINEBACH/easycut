@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { Film, Music, Scissors, Type, ZoomIn, ZoomOut } from 'lucide-react';
 import { MAX_PX_PER_SEC, MIN_PX_PER_SEC, useUiStore } from '../../store/ui';
 import { useMusicLayout, useTimelineLayout } from '../../hooks/useTimelineLayout';
 import { splitAtPlayhead } from '../../store/editActions';
@@ -66,45 +67,54 @@ export default function Timeline(): JSX.Element {
   }, [layout.total, musicEnd, setPps]);
 
   return (
-    <section className="flex shrink-0 flex-col border-t border-gray-200 bg-white" data-tour="timeline">
-      <div className="flex items-center gap-3 px-3 py-1.5">
-        <h2 className="text-sm font-semibold">타임라인</h2>
+    <section className="flex shrink-0 flex-col border-t border-line bg-inner" data-tour="timeline">
+      <div className="flex items-center gap-3 px-4 pt-2.5 pb-1.5">
+        <h2 className="ez-title">타임라인</h2>
         <button
-          className="rounded-md border border-gray-200 px-2 py-0.5 text-xs hover:bg-gray-50"
+          className="ez-btn-secondary h-8 rounded-lg px-3 text-xs"
           onClick={splitAtPlayhead}
           title="재생 위치에서 장면을 둘로 나눠요 (S)"
         >
-          ✂ 나누기
+          <Scissors size={14} />
+          나누기
         </button>
         <div className="flex-1" />
-        <button className="text-xs text-gray-500 hover:text-gray-800" onClick={zoomToFit}>
+        <button className="ez-icon-btn h-8 px-2.5 text-xs font-medium" onClick={zoomToFit}>
           전체 보기
         </button>
-        <label className="flex items-center gap-2 text-xs text-gray-500">
-          <button onClick={() => setPps(pps / 1.4)} aria-label="축소">
-            －
+        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <button className="ez-icon-btn h-8 w-8" onClick={() => setPps(pps / 1.4)} aria-label="축소">
+            <ZoomOut size={16} />
           </button>
           <input
             type="range"
+            className="w-32"
             min={0}
             max={100}
             step={0.5}
             value={toSlider(pps)}
+            style={{ '--fill': `${toSlider(pps)}%` } as React.CSSProperties}
             onChange={(e) => setPps(fromSlider(Number(e.target.value)))}
             aria-label="확대/축소"
           />
-          <button onClick={() => setPps(pps * 1.4)} aria-label="확대">
-            ＋
+          <button className="ez-icon-btn h-8 w-8" onClick={() => setPps(pps * 1.4)} aria-label="확대">
+            <ZoomIn size={16} />
           </button>
-        </label>
+        </div>
       </div>
 
-      <div className="flex pb-2">
-        <div className="w-14 shrink-0 text-xs font-medium text-gray-500">
+      <div className="flex pb-3">
+        <div className="w-14 shrink-0 text-xs font-medium text-body">
           <div style={{ height: TRACK.ruler }} />
-          <TrackLabel h={TRACK.video}>영상</TrackLabel>
-          <TrackLabel h={TRACK.subtitle}>자막</TrackLabel>
-          <TrackLabel h={TRACK.music}>음악</TrackLabel>
+          <TrackLabel h={TRACK.video} icon={<Film size={15} className="text-clip-video-on" />}>
+            영상
+          </TrackLabel>
+          <TrackLabel h={TRACK.subtitle} icon={<Type size={15} className="text-clip-sub-on" />}>
+            자막
+          </TrackLabel>
+          <TrackLabel h={TRACK.music} icon={<Music size={15} className="text-clip-music-on" />}>
+            음악
+          </TrackLabel>
         </div>
         <div ref={scrollRef} className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden" data-testid="timeline-scroll">
           <div className="relative" style={{ width: contentWidth }}>
@@ -126,9 +136,10 @@ export default function Timeline(): JSX.Element {
   );
 }
 
-function TrackLabel({ h, children }: { h: number; children: React.ReactNode }): JSX.Element {
+function TrackLabel({ h, icon, children }: { h: number; icon: React.ReactNode; children: React.ReactNode }): JSX.Element {
   return (
-    <div className="flex items-center pl-3" style={{ height: h, marginBottom: TRACK.gap }}>
+    <div className="flex items-center gap-1 pl-3" style={{ height: h, marginBottom: TRACK.gap }}>
+      {icon}
       {children}
     </div>
   );
@@ -137,8 +148,9 @@ function TrackLabel({ h, children }: { h: number; children: React.ReactNode }): 
 function Playhead({ x }: { x: number }): JSX.Element {
   return (
     <div className="pointer-events-none absolute top-0 bottom-0 z-20" style={{ left: x }} data-testid="playhead">
-      <div className="absolute -left-[6px] top-0 h-3 w-3 rotate-45 rounded-sm bg-red-500" />
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 -translate-x-1/4 bg-red-500" />
+      {/* 재생 위치 선 2px + 위쪽 작은 삼각형 */}
+      <div className="absolute top-0 -left-[6px] h-0 w-0 border-x-[7px] border-t-[9px] border-x-transparent border-t-playhead" />
+      <div className="absolute top-0 bottom-0 left-0 w-0.5 -translate-x-1/4 bg-playhead" />
     </div>
   );
 }

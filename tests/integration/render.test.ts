@@ -1,6 +1,6 @@
 // 실제 ffmpeg 로 컷 편집 영상 만들기 (PRD M5, 12.3). 시스템 ffmpeg + tests/fixtures 필요.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -255,4 +255,24 @@ describe('영상 만들기 (컷 편집)', () => {
     expect(r.status).toBe('error');
     expect(r.error).toContain('원본 파일을 찾을 수 없어요');
   });
+
+  it('원본 파일 이름으로는 저장하지 않는다 (원본은 읽기만)', async () => {
+    const src = project.media.find((m) => m.type === 'video')!.path;
+    const before = statSync(src).size;
+    const r = await finished(render.start({ project, outputPath: src, quality: '720p', fps: 30, subtitleMode: 'burn' }));
+    expect(r.status).toBe('error');
+    expect(r.error).toContain('원본 파일에는 저장할 수 없어요');
+    expect(statSync(src).size).toBe(before);
+  });
+
+  it('같은 이름 파일이 있을 때 취소하면 원래 파일은 그대로', async () => {
+    const out = join(root, '이미있음.mp4');
+    writeFileSync(out, '원래 파일');
+    const jobId = render.start({ project, outputPath: out, quality: '1080p', fps: 30, subtitleMode: 'burn' });
+    await waitFor(() => progress.some((p) => p.jobId === jobId), 30_000);
+    render.cancel(jobId);
+    expect((await finished(jobId)).status).toBe('canceled');
+    expect(readFileSync(out, 'utf8')).toBe('원래 파일');
+    expect(readdirSync(root).filter((n) => n.includes('만드는 중'))).toEqual([]);
+  }, 60_000);
 });

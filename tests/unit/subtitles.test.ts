@@ -24,6 +24,26 @@ const base = (): Project =>
     insertMedia(d, ['a', 'b']);
   });
 
+describe('장면 끝에 붙은 자막 (자막은 소속 장면 끝에서 잘림)', () => {
+  const visible = (p: Project): boolean[] => {
+    const l = layoutTimeline(p.videoTrack, p.transitions);
+    return p.subtitles.map((s) => !subtitleRange(l, s).hidden);
+  };
+  it('장면 끝 바로 앞에 넣어도 보이는 자리로 당긴다', () => {
+    const p = produce(base(), (d) => void addSubtitleAt(d, 9.99, 3, '끝'));
+    expect(visible(p)).toEqual([true]);
+    const r = subtitleRange(layoutTimeline(p.videoTrack, p.transitions), p.subtitles[0]);
+    expect(r.end - r.start).toBeGreaterThanOrEqual(0.3 - 1e-9);
+  });
+  it('끌어서 장면 끝 바로 앞에 놓아도 사라지지 않는다', () => {
+    const p = produce(base(), (d) => {
+      const s = addSubtitleAt(d, 1, 2, '끌기')!;
+      setSubtitleSpan(d, s.id, 9.98, 2);
+    });
+    expect(visible(p)).toEqual([true]);
+  });
+});
+
 describe('줄바꿈 (한 줄 20자)', () => {
   it('띄어쓰기에서 나누고, 없으면 20자에서', () => {
     expect(wrapSubtitle('오늘은 바다를 보러 왔어요 날씨가 정말 좋네요')).toEqual(['오늘은 바다를 보러 왔어요 날씨가', '정말 좋네요']);

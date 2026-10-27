@@ -50,6 +50,13 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
 - E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
 - E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music, m9-subtitle, m9b-speech, m10-start. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
   (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).
+- 버그 찾기용 추가 시험 (x- 로 시작):
+  - `x-monkey.mjs [횟수=300] [씨앗=1]` 무작위 조작 → 자료 규칙·되돌리기 1단계·다시 열기 검사
+    (`MONKEY_DEBUG=1` 이면 기록 없이 바뀐 자료를 찍음. 되돌리기는 100단계 한도라 처음 상태 비교는 그 안에서만)
+  - `x-edge.mjs` 특수문자 경로·금지 문자 이름·모든 기능 섞은 영상 만들기·깨진 프로젝트·빈 타임라인
+  - `x-stress.mjs [장면 수=40]` 대량 장면 + 화면 프레임 간격·영상 만들기(16개 묶음)
+  - `x-packaged.mjs` 배포판(dist/win-unpacked)에서 동봉 ffmpeg·글꼴·whisper 확인
+    (먼저 `npx electron-vite build && npx electron-builder --win --dir`)
 
 ## 진행 상황
 - [x] M0 프로젝트 셋업

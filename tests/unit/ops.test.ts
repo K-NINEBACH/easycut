@@ -84,6 +84,18 @@ describe('순서 변경·삭제 시 전환·자막이 따라감', () => {
     expect(p.transitions).toEqual([]);
     expect(p.subtitles).toEqual([]);
   });
+
+  it('deleteClips: 맨 끝 장면을 지우면 새 끝 장면 뒤 전환도 지운다', () => {
+    const two = produce(start, (d) => deleteClips(d, [d.videoTrack[2].id]));
+    // v1 → v2 사이 전환은 그대로
+    expect(two.transitions).toHaveLength(1);
+    const one = produce(two, (d) => deleteClips(d, [d.videoTrack[1].id]));
+    expect(ids(one)).toEqual(['v1']);
+    expect(one.transitions).toEqual([]);
+    // 다시 장면을 넣어도 지운 전환이 살아나지 않는다
+    const again = produce(one, (d) => void insertMedia(d, ['v2']));
+    expect(layoutTimeline(again.videoTrack, again.transitions).transitions.every((t) => !t || t.duration === 0)).toBe(true);
+  });
 });
 
 describe('trim / speed / split', () => {

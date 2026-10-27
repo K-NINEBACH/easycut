@@ -60,15 +60,16 @@ function SubtitleBlock(props: { sub: Subtitle; start: number; end: number; pps: 
       else b = Math.max(orig.start + 0.3, orig.end + d);
       live.update((p) => ops.setSubtitleSpan(p, sub.id, Math.max(0, a), b - Math.max(0, a)));
     };
+    // 끄는 도중 블록이 다시 그려지거나 사라져도 끝을 놓치지 않게 창 전체에서 받는다
     const up = (): void => {
-      el.removeEventListener('pointermove', move);
-      el.removeEventListener('pointerup', up);
-      el.removeEventListener('pointercancel', up);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
       live?.end();
     };
-    el.addEventListener('pointermove', move);
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   };
 
   return (

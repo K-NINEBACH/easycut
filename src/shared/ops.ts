@@ -67,21 +67,32 @@ export function moveClipsTo(p: Project, ids: string[], to: number): void {
 export function deleteClips(p: Project, ids: string[]): void {
   const set = new Set(ids);
   p.videoTrack = p.videoTrack.filter((c) => !set.has(c.id));
-  p.transitions = p.transitions.filter((t) => !set.has(t.afterClipId));
+  // 맨 끝 장면을 지우면 그 앞 장면의 전환은 이어 줄 장면이 없어지므로 함께 지운다
+  // (남겨 두면 나중에 장면을 뒤에 넣을 때 넣지 않은 전환이 생긴다)
+  const last = p.videoTrack[p.videoTrack.length - 1]?.id;
+  p.transitions = p.transitions.filter((t) => !set.has(t.afterClipId) && t.afterClipId !== last);
   p.subtitles = p.subtitles.filter((s) => !set.has(s.anchorClipId));
 }
 
-function clampTrim(c: VideoClip, media: MediaItem | undefined, inPoint: number, outPoint: number): [number, number] {
-  const max = media?.duration ?? outPoint;
-  let a = Math.max(0, inPoint);
-  let b = Math.min(max, outPoint);
-  const minSrc = MIN_CLIP_LENGTH * c.speed;
-  if (b - a < minSrc) {
-    // 움직인 쪽을 되돌려 최소 길이 확보
-    if (a !== c.inPoint) a = b - minSrc;
-    else b = a + minSrc;
+/**
+ * 원본 [0, max] 안에서 a~b 를 최소 길이 이상으로 맞춘다 (원본이 그보다 짧으면 원본 전체).
+ * 너무 짧아지면 움직인 쪽(a 가 원래 값 origIn 과 다르면 앞쪽)을 되돌리고, 원본 끝에 걸리면 반대쪽으로 민다.
+ */
+function clampRange(inPoint: number, outPoint: number, origIn: number, max: number, minLen: number): [number, number] {
+  const min = Math.min(minLen, max);
+  let a = Math.min(Math.max(0, inPoint), max);
+  let b = Math.min(Math.max(0, outPoint), max);
+  if (b - a < min) {
+    if (a !== origIn) a = b - min;
+    else b = a + min;
+    if (a < 0) [a, b] = [0, min];
+    if (b > max) [a, b] = [max - min, max];
   }
-  return [Math.max(0, a), Math.min(max, b)];
+  return [a, b];
+}
+
+function clampTrim(c: VideoClip, media: MediaItem | undefined, inPoint: number, outPoint: number): [number, number] {
+  return clampRange(inPoint, outPoint, c.inPoint, media?.duration ?? Math.max(outPoint, c.outPoint), MIN_CLIP_LENGTH * c.speed);
 }
 
 /** 앞뒤 자르기 (원본 기준). 앞을 자르면 자막이 내용과 함께 앞으로 당겨진다 */
@@ -117,6 +128,8 @@ export function setSpeed(p: Project, clipId: string, speed: Speed): void {
     s.duration *= ratio;
   }
   c.speed = speed;
+  // 빠르게 해서 최소 길이보다 짧아지면 뒤쪽을 늘린다 (원본 끝이면 앞쪽)
+  if ((c.outPoint - c.inPoint) / speed < MIN_CLIP_LENGTH - 1e-9) trimClip(p, clipId, c.inPoint, c.inPoint + MIN_CLIP_LENGTH * speed);
 }
 
 /** 소리 켜기/끄기, 볼륨 0~2 (PRD F3) */
@@ -228,15 +241,7 @@ export function trimMusic(p: Project, id: string, inPoint: number, outPoint: num
   const m = p.musicTrack.find((x) => x.id === id);
   if (!m) return;
   const media = p.media.find((x) => x.id === m.mediaId);
-  const max = media?.duration ?? outPoint;
-  let a = Math.max(0, inPoint);
-  let b = Math.min(max, outPoint);
-  if (b - a < MIN_CLIP_LENGTH) {
-    if (a !== m.inPoint) a = b - MIN_CLIP_LENGTH;
-    else b = a + MIN_CLIP_LENGTH;
-  }
-  m.inPoint = Math.max(0, a);
-  m.outPoint = Math.min(max, b);
+  [m.inPoint, m.outPoint] = clampRange(inPoint, outPoint, m.inPoint, media?.duration ?? Math.max(outPoint, m.outPoint), MIN_CLIP_LENGTH);
 }
 
 /**
@@ -333,17 +338,36 @@ function subtitleRanges(p: Project): { id: string; start: number; end: number }[
   return p.subtitles.map((s) => ({ id: s.id, ...subtitleRange(layout, s) })).filter((r) => !r.hidden);
 }
 
+/** 자막이 붙을 장면에서 보일 수 있는 최소 길이 (초) */
+const MIN_SUBTITLE_VISIBLE = 0.3;
+
+/**
+ * 겹치지 않게 맞춘 자리를 정하고, 시작이 장면 끝에 너무 붙어 자막이 안 보이게 되면
+ * (자막은 소속 장면 끝에서 잘린다) 장면 안쪽으로 당긴다. 그래도 다른 자막과 겹치면 null.
+ */
+function placeSubtitle(p: Project, selfId: string, absStart: number, duration: number): { start: number; duration: number } | null {
+  const layout = layoutTimeline(p.videoTrack, p.transitions);
+  const ranges = subtitleRanges(p);
+  const span = clampSubtitleSpan(ranges, selfId, absStart, duration, layout.total);
+  if (!span) return null;
+  const a = anchorFor(p, span.start);
+  const cl = a ? layout.byId.get(a.anchorClipId) : undefined;
+  if (!cl || cl.end - span.start >= MIN_SUBTITLE_VISIBLE) return span;
+  const start = Math.max(cl.start, cl.end - MIN_SUBTITLE_VISIBLE);
+  const end = start + span.duration;
+  if (ranges.some((r) => r.id !== selfId && r.start < end - 1e-6 && r.end > start + 1e-6)) return null;
+  return { start, duration: span.duration };
+}
+
 /** [＋ 자막 추가] (PRD 4-1): 재생 위치에 3초, 다른 자막과 겹치지 않게. 자리가 없으면 null */
 export function addSubtitleAt(p: Project, t: number, duration = 3, text = ''): Subtitle | null {
-  const total = layoutTimeline(p.videoTrack, p.transitions).total;
-  const span = clampSubtitleSpan(subtitleRanges(p), '', t, duration, total);
+  const span = placeSubtitle(p, '', t, duration);
   return span ? addSubtitle(p, span.start, span.duration, text) : null;
 }
 
 /** 끌어서 옮기기·길이 조절: 겹치지 않게 맞추고 소속 장면 다시 계산 */
 export function setSubtitleSpan(p: Project, id: string, absStart: number, duration: number): void {
-  const total = layoutTimeline(p.videoTrack, p.transitions).total;
-  const span = clampSubtitleSpan(subtitleRanges(p), id, absStart, duration, total);
+  const span = placeSubtitle(p, id, absStart, duration);
   if (span) moveSubtitle(p, id, span.start, span.duration);
 }
 

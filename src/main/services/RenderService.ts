@@ -1,8 +1,8 @@
 // 영상 만들기 (PRD F9, 9장).
 // 1단계 장면별 중간 파일 → 2단계 컷·전환으로 잇기 → 3단계 자막 굽기·배경음악 섞어 최종 인코딩.
 import { existsSync } from 'node:fs';
-import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, extname, join } from 'node:path';
+import { copyFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { buildAss, buildSrt, FONTS, visibleSubtitles } from '@shared/subtitles';
 import type { MediaItem, RenderOptions } from '@shared/types';
 import { bakeLut, isIdentityLook, lookOf, lutToCube } from '@shared/filters';
@@ -80,6 +80,10 @@ export class RenderService {
       if (!m || !existsSync(m.path)) throw new RenderError(`음악 파일을 찾을 수 없어요: ${m?.fileName ?? '알 수 없는 파일'}`);
       return { path: m.path, inPoint: c.inPoint, outPoint: c.outPoint };
     });
+    // 원본은 읽기만 (PRD 0장): 저장 위치가 불러온 파일과 같으면 시작하지 않는다
+    const same = (a: string, b: string): boolean => resolve(a).toLowerCase() === resolve(b).toLowerCase();
+    if (project.media.some((m) => same(m.path, outputPath)))
+      throw new RenderError('불러온 원본 파일에는 저장할 수 없어요. 다른 이름이나 다른 곳을 골라 주세요.');
 
     const fmt: RenderFormat = { ...RENDER_SIZES[opts.quality], fps: opts.fps };
     const layout = layoutTimeline(project.videoTrack, project.transitions);
@@ -91,6 +95,8 @@ export class RenderService {
     });
 
     const work = join(root, 'render', ctx.jobId);
+    // 같은 폴더의 임시 이름으로 만들고 다 되면 바꾼다: 실패·취소해도 원래 있던 같은 이름 파일은 그대로
+    const partPath = join(dirname(outputPath), `~${basename(outputPath, extname(outputPath))}.만드는 중.mp4`);
     await mkdir(work, { recursive: true });
     await mkdir(dirname(outputPath), { recursive: true });
     if (logPath) await writeFile(logPath, `영상 만들기 ${new Date().toISOString()} → ${outputPath}\n`);
@@ -153,13 +159,14 @@ export class RenderService {
         await writeFile(join(work, 'subs.ass'), buildAss(layout, project.subtitles, project.defaultSubtitleStyle));
         burn = { assFile: 'subs.ass', fontsDir: 'fonts' };
       }
-      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, outputPath, fmt, mix, burn), {
+      await runFfmpeg(this.tools.ffmpeg, buildFinalCommand(joined, partPath, fmt, mix, burn), {
         cwd: work,
         signal: ctx.signal,
         logPath,
         durationSec: joinedFrames / fmt.fps,
         onProgress: (f) => report(2, f)
       });
+      await rename(partPath, outputPath);
       report(2, 1);
       // 자막 파일 따로 저장: 영상과 같은 이름 .srt
       let srtPath: string | undefined;
@@ -169,8 +176,8 @@ export class RenderService {
       }
       return { outputPath, srtPath };
     } catch (err) {
-      // 취소·실패 시 만들다 만 결과 파일은 지운다
-      await rm(outputPath, { force: true }).catch(() => {});
+      // 취소·실패 시 만들다 만 임시 파일만 지운다
+      await rm(partPath, { force: true }).catch(() => {});
       throw err;
     } finally {
       await rm(work, { recursive: true, force: true }).catch(() => {});

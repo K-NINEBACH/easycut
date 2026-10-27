@@ -36,16 +36,17 @@ export function startTrimDrag(e: React.PointerEvent, clip: VideoClip, side: Trim
     // 끝 손잡이는 마지막으로 보이는 프레임 (끝 시각 바로 앞)
     if (c) setScrub({ clipId: clip.id, sourceTime: side === 'in' ? c.inPoint : Math.max(c.inPoint, c.outPoint - 1 / 30) });
   };
+  // 손잡이가 끄는 도중 다시 그려지거나 사라져도 끝을 놓치지 않게 창 전체에서 받는다
   const up = (): void => {
-    el.removeEventListener('pointermove', move);
-    el.removeEventListener('pointerup', up);
-    el.removeEventListener('pointercancel', up);
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', up);
     setScrub(null);
     live.end();
   };
-  el.addEventListener('pointermove', move);
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', up);
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
 }
 
 /** 음악 앞뒤 자르기 드래그 (1px = 1/pps 초, 속도 없음) */
@@ -63,13 +64,14 @@ export function startMusicTrimDrag(e: React.PointerEvent, clip: MusicClip, side:
     const b = side === 'out' ? orig.outPoint + d : orig.outPoint;
     live.update((p) => ops.trimMusic(p, clip.id, a, b));
   };
+  // 손잡이가 끄는 도중 다시 그려지거나 사라져도 끝을 놓치지 않게 창 전체에서 받는다
   const up = (): void => {
-    el.removeEventListener('pointermove', move);
-    el.removeEventListener('pointerup', up);
-    el.removeEventListener('pointercancel', up);
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', up);
     live.end();
   };
-  el.addEventListener('pointermove', move);
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', up);
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
 }

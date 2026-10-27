@@ -107,13 +107,18 @@ export function wrapSubtitle(text: string, max = MAX_LINE_CHARS): string[] {
   return out;
 }
 
-/** 자막 하나를 화면에 보일 범위와 함께 (숨김 제외, 시간순) */
+/**
+ * 자막 하나를 화면에 보일 범위와 함께 (숨김 제외, 시간순).
+ * 서로 다른 장면의 자막이 전환 구간에서 겹치면 앞 자막을 뒤 자막 시작에서 끊는다 (한 번에 하나만 보이게).
+ */
 export function visibleSubtitles(layout: TimelineLayout, subs: Subtitle[]): { sub: Subtitle; start: number; end: number }[] {
-  return subs
+  const items = subs
     .map((sub) => ({ sub, ...subtitleRange(layout, sub) }))
     .filter((x) => !x.hidden && x.sub.text.trim() !== '')
     .sort((a, b) => a.start - b.start)
     .map(({ sub, start, end }) => ({ sub, start, end }));
+  for (let i = 0; i < items.length - 1; i++) items[i].end = Math.min(items[i].end, items[i + 1].start);
+  return items.filter((x) => x.end - x.start >= 0.05);
 }
 
 // --- 말소리로 자막 만들기 (PRD 4-2) ---

@@ -41,7 +41,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
 ```
 - Windows: 시스템 ffmpeg 가 없으면 `PATH="$PWD/resources/bin:$PATH"` 를 붙여 샘플 생성·통합 테스트 실행.
 - E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
-- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music, m9-subtitle, m9b-speech. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
+- E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music, m9-subtitle, m9b-speech, m10-start. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
   (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).
 
 ## 진행 상황
@@ -73,9 +73,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
   - [x] M9b 말소리 자동 생성 — `services/SubtitleService.ts`: 대상 장면 소리를 타임라인 순서로 16kHz WAV 하나로 →
         whisper-cli(-l ko -oj -pp) → `subtitles.segmentsToSubtitles` (시작 장면에 붙이고 두 줄씩 나눔).
         whisper.cpp v1.9.5(b5454) CPU 빌드. 17초 샘플 small 모델로 약 6초
-- [ ] M10 마감 — 진행 중. 끝난 것: 메인 쪽 SettingsService(settings.json: tourDone, sessionOpen),
-      IPC project:startup(연 채로 꺼졌으면 바로 복구, 아니면 null)·project:close·settings:get/set, before-quit 에서
-      sessionOpen=false, 메인 예상 못 한 오류 logs/main.log 기록, electron-builder 에 *.dll 포함.
-      남은 것: 렌더러 시작 화면(App.tsx 가 아직 openLast 사용 → startup 으로 교체, 새 영상 만들기·이어서 만들기·최근 8개),
-      preload 에 startup/close/settings 노출, 첫 실행 안내 4단계(테스트에서는 꺼 두기), 메뉴(처음 화면·단축키 표·안내 다시 보기),
-      화면 오류 경계, E2E launch.mjs 가 시작 화면을 지나가게(파일 대화상자 바꿔치기), npm run dist:win 확인
+- [x] M10 마감 — 시작 화면 `screens/StartScreen.tsx`, 비정상 종료 복구는 settings.json 의 sessionOpen
+      (프로젝트 열 때 true, before-quit 에 false → 다음 실행 때 true 면 project:startup 이 바로 엶),
+      첫 실행 안내 `Help/Tour.tsx` (테스트에서는 EASYCUT_TEST_TOUR=1 일 때만), 메뉴·단축키 표, 오류 경계.
+      E2E launch.mjs 는 시작 화면을 지나감(start:'none' 으로 멈출 수 있음). dist:win 설치 파일 약 660MB (small 모델 포함)

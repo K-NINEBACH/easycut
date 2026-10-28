@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import { IpcChannel, type AppInfo, type ImportResult, type WaveformData } from '@shared/ipc';
+import { IpcChannel, type AppInfo, type ImportResult, type UpdateReady, type WaveformData } from '@shared/ipc';
 import type { JobDone, JobProgress, MediaItem, Project, RecentProject, RenderOptions } from '@shared/types';
 
 function subscribe<T>(channel: string, cb: (e: T) => void): () => void {
@@ -15,6 +15,13 @@ const api = {
   testTour: process.env.EASYCUT_TEST_TOUR === '1',
   app: {
     getInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IpcChannel.AppGetInfo)
+  },
+  update: {
+    /** 이미 받아 둔 새 버전 (없으면 null) */
+    getReady: (): Promise<UpdateReady | null> => ipcRenderer.invoke(IpcChannel.UpdateGetReady),
+    onReady: (cb: (e: UpdateReady) => void): (() => void) => subscribe(IpcChannel.UpdateReady, cb),
+    /** 앱을 끄고 새 버전을 설치한 뒤 다시 켠다 */
+    install: (): Promise<void> => ipcRenderer.invoke(IpcChannel.UpdateInstall)
   },
   project: {
     create: (name: string): Promise<Project> => ipcRenderer.invoke(IpcChannel.ProjectCreate, name),

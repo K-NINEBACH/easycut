@@ -24,5 +24,11 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: ${productName}-설치-${version}.${ext}
+  # GitHub 릴리스는 한글 파일 이름을 바꿔 버려 자동 업데이트가 파일을 못 찾으므로 영문으로
+  artifactName: EasyCut-Setup-${version}.${ext}
   shortcutName: 쉬운편집
+# 자동 업데이트 (PRD 13장 #11): 앱이 이 저장소의 최신 릴리스를 확인한다. 올리는 법은 CLAUDE.md "## 배포"
+publish:
+  provider: github
+  owner: K-NINEBACH
+  repo: easycut

@@ -15,8 +15,16 @@ export interface AppInfo {
   ffprobe: BinaryInfo;
 }
 
+/** 새 버전을 다 받아 설치할 준비가 됨 */
+export interface UpdateReady {
+  version: string;
+}
+
 export const IpcChannel = {
   AppGetInfo: 'app:getInfo',
+  UpdateReady: 'update:ready',
+  UpdateGetReady: 'update:getReady',
+  UpdateInstall: 'update:install',
   ProjectCreate: 'project:create',
   ProjectOpen: 'project:open',
   ProjectOpenLast: 'project:openLast',

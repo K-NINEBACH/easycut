@@ -4,6 +4,7 @@ import StartScreen from './screens/StartScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import type { Project } from '@shared/types';
 import Toasts from './components/Toasts';
+import UpdateBanner from './components/UpdateBanner';
 import { useProjectStore } from './store/project';
 import { useUiStore } from './store/ui';
 import { importPaths, pickAndImport, prepareAllMedia, subscribeMediaJobs } from './store/mediaActions';
@@ -62,6 +63,7 @@ export default function App(): JSX.Element {
       <>
         <StartScreen onOpen={open} />
         <Toasts />
+        <UpdateBanner />
       </>
     );
 
@@ -71,6 +73,7 @@ export default function App(): JSX.Element {
         <EditorScreen />
       </ErrorBoundary>
       <Toasts />
+      <UpdateBanner />
     </>
   );
 }

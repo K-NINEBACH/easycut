@@ -5,6 +5,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { applyDataDirOverride, createContext } from './context';
 import { getAppInfo, registerIpc } from './ipc';
 import { registerMediaProtocol, registerMediaSchemePrivileges } from './protocol';
+import { startAutoUpdate } from './updater';
 
 applyDataDirOverride();
 registerMediaSchemePrivileges();
@@ -71,6 +72,7 @@ app.whenReady().then(async () => {
     resourcesDir: ctx.resourcesDir
   });
   registerIpc(ctx);
+  startAutoUpdate(logError);
   // 정상 종료: 다음 실행은 시작 화면부터 (비정상 종료면 이 표시가 남아 바로 복구)
   app.on('before-quit', () => ctx.settings.set({ sessionOpen: false }));
 

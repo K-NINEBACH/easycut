@@ -21,7 +21,7 @@ npm run check:ffmpeg     # 앱이 쓸 ffmpeg/ffprobe 버전 출력
 npm run dev              # 개발 실행
 npm run typecheck
 npm test                 # vitest (tests/unit)
-npm run dist:win         # NSIS 설치 파일 (Windows에서 실행)
+npm run dist:win         # NSIS 설치 파일 dist/EasyCut-Setup-버전.exe (Windows에서 실행, 올리기는 "## 배포")
 ```
 
 ## 구조 메모
@@ -39,6 +39,19 @@ npm run dist:win         # NSIS 설치 파일 (Windows에서 실행)
 - 장면 동시 처리 수 = CPU 코어 3개당 1개 (2~4).
 - 재기: `PATH=resources/bin:$PATH BENCH_CLIPS=12 npx vitest run --config vitest.bench.config.mts --silent=false`
   (i5-8500 6코어, 장면 12개+전환: 61.5초 → 35.7초)
+
+## 배포·자동 업데이트 (PRD 13장 #11)
+- 설치한 앱은 실행할 때 `K-NINEBACH/easycut` 의 최신 GitHub 릴리스를 확인한다 (`src/main/updater.ts`,
+  안내 창 `components/UpdateBanner.tsx`). 개발 실행·EASYCUT_TEST 에서는 확인하지 않는다.
+- 새 버전 올리는 법:
+  1. `package.json` 의 version 올리기 (예: 0.1.1 → 0.1.2). 버전이 같으면 업데이트가 안 된다.
+  2. 커밋 → `git push`, `npm run dist:win`
+  3. `gh release create v0.1.2 dist/EasyCut-Setup-0.1.2.exe dist/EasyCut-Setup-0.1.2.exe.blockmap dist/latest.yml --title "0.1.2" --notes "바뀐 점"`
+     (세 파일 모두 필요. 태그는 v+버전. 이전 릴리스의 blockmap 은 지우지 않는다 — 바뀐 부분만 받는 데 씀)
+- 시험: `node tests/e2e/x-update.mjs <옛 설치 파일> <새 버전 폴더>` — 옛 버전을 임시 폴더에 설치하고 내 PC 안 시험 서버
+  (`EASYCUT_UPDATE_URL`)로 업데이트 → 버전·프로젝트 유지·받은 양 확인 후 지움. 새 버전 폴더에는 새 exe·blockmap·latest.yml
+  과 옛 blockmap. 업데이트 임시 폴더 `%LOCALAPPDATA%\easycut-updater` 를 비우고 시작한다.
+  시험용 새 버전은 `npx electron-builder --win --publish never '--config.directories.output=dist-test'` (version 만 잠깐 올려서)
 
 ## 디자인
 - 색·모서리·그림자 토큰과 공통 부품 클래스(`ez-panel`, `ez-btn-primary/secondary/soft`, `ez-icon-btn`, `ez-seg`, `ez-input`)는
@@ -66,6 +79,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
   - `x-stress.mjs [장면 수=40]` 대량 장면 + 화면 프레임 간격·영상 만들기(16개 묶음)
   - `x-packaged.mjs` 배포판(dist/win-unpacked)에서 동봉 ffmpeg·글꼴·whisper 확인
     (먼저 `npx electron-vite build && npx electron-builder --win --dir`)
+  - `x-update.mjs` 실제 설치 → 자동 업데이트 (아래 "## 배포·자동 업데이트")
 
 ## 진행 상황
 - [x] M0 프로젝트 셋업

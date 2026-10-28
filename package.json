@@ -1,7 +1,7 @@
 {
   "name": "easycut",
   "productName": "쉬운편집",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "초보자용 영상 편집기",
   "main": "./out/main/index.js",
   "private": true,
@@ -16,12 +16,13 @@
     "test:watch": "vitest",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "check:ffmpeg": "node scripts/check-ffmpeg.mjs",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:win": "npm run build && electron-builder --win --publish never",
     "test:integration": "vitest run --config vitest.integration.config.mts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "electron-updater": "^6.8.11",
     "lucide-react": "^1.62.0"
   },
   "devDependencies": {

@@ -69,6 +69,8 @@ node scripts/make-speech-fixture.mjs  # 한국어 말소리 샘플 tests/speech/
 npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, 리눅스는 xvfb-run)
 ```
 - Windows: 시스템 ffmpeg 가 없으면 `PATH="$PWD/resources/bin:$PATH"` 를 붙여 샘플 생성·통합 테스트 실행.
+- E2E 임시 폴더는 `launch.mjs` 의 `tempDataDir` 로 만들어 끝나면(실패해도) 지운다. 결과물을 보려면 `EZ_KEEP=1`.
+  새 시험도 `mkdtempSync` 대신 이걸 쓴다 (예전에 %TEMP% 에 8.8GB 가 쌓였음)
 - E2E 는 `playwright` 모듈이 필요 (`npm i --no-save playwright`, 브라우저 다운로드는 필요 없음).
 - E2E 파일: m1-import, m2-timeline, m3-preview, m4-trim, m5-export, m6-filter, m7-transition, m8-music, m9-subtitle, m9b-speech, m10-start. 강제 종료 흉내는 `launch.mjs` 의 `forceKill`
   (Windows 는 `kill` 이 자식 프로세스를 남겨 테스트가 안 끝남).

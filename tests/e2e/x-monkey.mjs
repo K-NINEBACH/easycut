@@ -1,17 +1,15 @@
 // 무작위 조작 시험 (몽키 테스트): 화면에서 할 수 있는 동작을 무작위로 수백 번 하면서
 // 매번 프로젝트 자료가 올바른지 검사하고, 끝에 되돌리기/다시 하기로 처음·마지막 상태가 그대로 돌아오는지 본다.
 // 실행: node tests/e2e/x-monkey.mjs [반복 횟수=300] [씨앗=1]
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, tempDataDir } from './launch.mjs';
 
 const STEPS = Number(process.argv[2] ?? 300);
 let seed = Number(process.argv[3] ?? 1);
 const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-monkey-'));
+const dataDir = tempDataDir('easycut-monkey-');
 const { app, win } = await launch(dataDir);
 const errors = [];
 win.on('pageerror', (e) => errors.push('pageerror: ' + e.message));

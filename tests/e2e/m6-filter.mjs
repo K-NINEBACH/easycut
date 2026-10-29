@@ -1,12 +1,11 @@
 // M6: 필터 — 필터마다 미리보기 화면과 만든 영상의 같은 프레임 색을 비교 (PRD F7 완료 조건)
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const bin = (n) => (existsSync(join(ROOT, 'resources', 'bin', `${n}.exe`)) ? join(ROOT, 'resources', 'bin', `${n}.exe`) : n);
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const { app, win } = await launch(dataDir);
 await win.evaluate((dir) => window.__ezcut.importPaths([dir]), FIXTURES);

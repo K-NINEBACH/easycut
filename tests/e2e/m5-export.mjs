@@ -1,12 +1,11 @@
 // M5: 영상 만들기 창 → 컷 편집 영상 내보내기 (PRD F9). ffprobe 가 PATH 에 있거나 resources/bin 에 있어야 함
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const ffprobe = existsSync(join(ROOT, 'resources', 'bin', 'ffprobe.exe')) ? join(ROOT, 'resources', 'bin', 'ffprobe.exe') : 'ffprobe';
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const { app, win } = await launch(dataDir);
 

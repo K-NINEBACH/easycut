@@ -3,12 +3,11 @@
 //   node tests/e2e/x-update.mjs <옛 설치 파일.exe> <새 버전 폴더(latest.yml·exe·blockmap, 옛 blockmap)>
 // 프로젝트는 시험용 데이터 폴더에 만들므로 내 문서는 건드리지 않는다. 끝나면 시험 설치를 지운다.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createReadStream, existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { check as checkCond, ROOT } from './launch.mjs';
+import { check as checkCond, ROOT, tempDataDir } from './launch.mjs';
 
 const { _electron } = createRequire(join(ROOT, 'package.json'))('playwright');
 const check = (msg, cond) => checkCond(cond, msg);
@@ -41,7 +40,7 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const feedUrl = `http://127.0.0.1:${server.address().port}/`;
 
-const work = mkdtempSync(join(tmpdir(), 'easycut-update-'));
+const work = tempDataDir('easycut-update-');
 const installDir = join(work, 'app');
 const exe = join(installDir, '쉬운편집.exe');
 const env = { ...process.env, EASYCUT_DATA_DIR: join(work, 'data'), EASYCUT_TEST: '1', EASYCUT_UPDATE_URL: feedUrl };

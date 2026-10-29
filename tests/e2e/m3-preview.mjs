@@ -1,10 +1,8 @@
 // M3: 미리보기 — 프레임 표시, 세로 영상 흐린 배경, 클립 경계에서 멈춤 없는 재생
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, tempDataDir } from './launch.mjs';
 
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const { app, win } = await launch(dataDir);
 await win.evaluate((dir) => window.__ezcut.importPaths([dir]), FIXTURES);

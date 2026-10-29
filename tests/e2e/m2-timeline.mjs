@@ -1,10 +1,9 @@
 // M2: 타임라인 배치/순서/삭제, Undo/Redo, 자동 저장 + 강제 종료 복구, 원본 재연결
-import { cpSync, mkdtempSync, renameSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, forceKill, FIXTURES } from './launch.mjs';
+import { launch, state, waitReady, check, forceKill, FIXTURES, tempDataDir } from './launch.mjs';
 
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 // 원본을 임시 폴더로 복사 (나중에 폴더를 옮겨서 재연결 확인)
 const srcA = join(dataDir, '원본 영상');

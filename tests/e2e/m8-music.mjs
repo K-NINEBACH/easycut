@@ -1,12 +1,11 @@
 // M8: 배경음악 — 음악 넣기·자르기·영상 길이에 맞추기·설정, 미리보기 소리 크기(페이드·덕킹 근사), 렌더
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const ffprobe = existsSync(join(ROOT, 'resources', 'bin', 'ffprobe.exe')) ? join(ROOT, 'resources', 'bin', 'ffprobe.exe') : 'ffprobe';
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const { app, win } = await launch(dataDir);
 await win.evaluate((dir) => window.__ezcut.importPaths([dir]), FIXTURES);

@@ -3,14 +3,13 @@
 // 2) 모든 기능을 섞어(사진·세로 HEVC·속도·필터·전환·자막 특수문자·배경음악) 영상 만들기 → 결과 파일 검사
 // 3) 프로젝트 파일이 깨졌을 때 (백업 있음 / 없음)
 // 4) 빈 타임라인에서 영상 만들기 막힘
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { launch, state, waitReady, check, FIXTURES, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const ffprobe = existsSync(join(ROOT, 'resources', 'bin', 'ffprobe.exe')) ? join(ROOT, 'resources', 'bin', 'ffprobe.exe') : 'ffprobe';
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-edge-'));
+const dataDir = tempDataDir('easycut-edge-');
 const src = join(dataDir, "원본 폴더 (1) & 'q' #2");
 mkdirSync(src);
 const files = {

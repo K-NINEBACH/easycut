@@ -1,10 +1,8 @@
 // M10: 시작 화면, 새 영상 만들기 → 바로 파일 고르기, 첫 실행 안내, 메뉴(단축키·처음 화면), 비정상 종료 복구
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, state, check, forceKill } from './launch.mjs';
+import { launch, state, check, forceKill, tempDataDir } from './launch.mjs';
 
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const env = { EASYCUT_TEST_TOUR: '1' };
 

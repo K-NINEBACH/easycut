@@ -1,16 +1,15 @@
 // M9b: [🎤 말소리로 자막 만들기] — 범위, 진행, 기존 자막 확인, 취소, 되돌리기 (PRD 4-2)
 // 필요: node scripts/fetch-whisper.mjs, node scripts/make-speech-fixture.mjs
-import { existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, ROOT, tempDataDir } from './launch.mjs';
 
 const sample = join(ROOT, 'tests', 'speech', 'korean_speech.mp4');
 if (!existsSync(sample) || !existsSync(join(ROOT, 'resources', 'models', 'ggml-small.bin'))) {
   console.log('건너뜀: 말소리 샘플 또는 whisper 모델이 없어요');
   process.exit(0);
 }
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const { app, win } = await launch(dataDir);
 await win.evaluate((f) => window.__ezcut.importPaths([f]), sample);

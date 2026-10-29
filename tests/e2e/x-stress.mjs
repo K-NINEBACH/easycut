@@ -1,14 +1,13 @@
 // 대량 시험: 장면 40개 + 전환 모두 + 자막 20개 → 화면 반응·자동 저장·영상 만들기(16개씩 묶음 처리)
 // PRD 규모(15분·장면 40개)를 흉내낸다. 실행: node tests/e2e/x-stress.mjs [장면 수=40]
-import { mkdtempSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { launch, state, waitReady, check, FIXTURES, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const N = Number(process.argv[2] ?? 40);
 const ffprobe = existsSync(join(ROOT, 'resources', 'bin', 'ffprobe.exe')) ? join(ROOT, 'resources', 'bin', 'ffprobe.exe') : 'ffprobe';
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-stress-'));
+const dataDir = tempDataDir('easycut-stress-');
 const { app, win } = await launch(dataDir);
 const errors = [];
 win.on('pageerror', (e) => errors.push(e.message));

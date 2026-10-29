@@ -1,10 +1,8 @@
 // M1: 불러오기 → 프록시 → Chromium 재생 → 재시작 시 캐시 재사용
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, tempDataDir } from './launch.mjs';
 
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 
 let { app, win } = await launch(dataDir);

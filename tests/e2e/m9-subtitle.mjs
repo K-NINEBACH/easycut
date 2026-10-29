@@ -1,12 +1,11 @@
 // M9a: 자막 직접 넣기·옮기기·모양·목록·.srt, 미리보기 자막과 결과 자막의 위치·크기 비교 (PRD F4)
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, state, waitReady, check, FIXTURES, ROOT } from './launch.mjs';
+import { launch, state, waitReady, check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const ffmpeg = existsSync(join(ROOT, 'resources', 'bin', 'ffmpeg.exe')) ? join(ROOT, 'resources', 'bin', 'ffmpeg.exe') : 'ffmpeg';
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-e2e-'));
+const dataDir = tempDataDir('easycut-e2e-');
 const shotDir = process.argv[2] ?? dataDir;
 const { app, win } = await launch(dataDir);
 await win.evaluate((dir) => window.__ezcut.importPaths([dir]), FIXTURES);

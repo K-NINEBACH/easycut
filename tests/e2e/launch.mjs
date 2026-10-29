@@ -1,4 +1,6 @@
 // Playwright 로 실제 Electron 앱을 띄우는 도우미 (E2E). 먼저 npx electron-vite build.
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -8,6 +10,23 @@ const { _electron } = createRequire(import.meta.url)('playwright');
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const FIXTURES = join(ROOT, 'tests', 'fixtures');
+
+/**
+ * 시험용 임시 폴더. 시험이 끝나면(실패해도) 지운다 — 영상·프록시가 쌓여 C 드라이브를 채우지 않게.
+ * 결과물을 보고 싶으면 EZ_KEEP=1.
+ */
+export function tempDataDir(prefix) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  process.on('exit', () => {
+    if (process.env.EZ_KEEP) return console.log('결과물:', dir);
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+    } catch (e) {
+      console.warn('임시 폴더를 못 지움:', dir, e.message);
+    }
+  });
+  return dir;
+}
 
 /**
  * start: 'auto' 면 시작 화면을 지나간다 (최근 프로젝트가 있으면 이어서 만들기, 없으면 새 영상 만들기).

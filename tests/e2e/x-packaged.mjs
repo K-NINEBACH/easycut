@@ -1,17 +1,16 @@
 ﻿// 배포판 시험: electron-builder 로 만든 dist/win-unpacked/쉬운편집.exe 를 띄워서
 // 동봉 파일(ffmpeg·글꼴·whisper·모델)을 실제로 찾는지 — 불러오기 → 필터·전환·자막 → 영상 만들기 → 말소리 자막.
 // 먼저: npx electron-vite build && npx electron-builder --win --dir
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { check, FIXTURES, ROOT } from './launch.mjs';
+import { check, FIXTURES, ROOT, tempDataDir } from './launch.mjs';
 
 const { _electron } = createRequire(import.meta.url)('playwright');
 const dir = join(ROOT, 'dist', 'win-unpacked');
 const exe = readdirSync(dir).find((f) => f.endsWith('.exe') && !/uninstall/i.test(f));
-const dataDir = mkdtempSync(join(tmpdir(), 'easycut-packaged-'));
+const dataDir = tempDataDir('easycut-packaged-');
 const app = await _electron.launch({
   executablePath: join(dir, exe),
   env: { ...process.env, PATH: 'C:\\Windows\\System32', EASYCUT_DATA_DIR: dataDir, EASYCUT_TEST: '1' }

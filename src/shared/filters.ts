@@ -11,7 +11,17 @@ export const FILTERS: { id: FilterId; name: string }[] = [
   { id: 'mono', name: '흑백' },
   { id: 'bright', name: '밝게' },
   { id: 'mood', name: '감성' },
-  { id: 'forest', name: '초록 숲' }
+  { id: 'forest', name: '초록 숲' },
+  { id: 'sunset', name: '노을' },
+  { id: 'ocean', name: '푸른 바다' },
+  { id: 'cherry', name: '벚꽃' },
+  { id: 'autumn', name: '단풍' },
+  { id: 'food', name: '맛있게' },
+  { id: 'soft', name: '뽀얗게' },
+  { id: 'cinema', name: '영화처럼' },
+  { id: 'night', name: '야경' },
+  { id: 'retro', name: '레트로' },
+  { id: 'sepia', name: '세피아' }
 ];
 
 export const LUT_SIZE = 33;
@@ -64,6 +74,30 @@ function curve(points: [number, number][]): (x: number) => number {
   };
 }
 
+/** 색상(0~360°)이 center 근처인 정도 0~1 (width 바깥은 0, 회색은 0) */
+function hueWeight(c: RGB, center: number, width: number): number {
+  const max = Math.max(c[0], c[1], c[2]);
+  const min = Math.min(c[0], c[1], c[2]);
+  const d = max - min;
+  if (d < 1e-6) return 0;
+  let h = max === c[0] ? ((c[1] - c[2]) / d) % 6 : max === c[1] ? (c[2] - c[0]) / d + 2 : (c[0] - c[1]) / d + 4;
+  h = (h * 60 + 360) % 360;
+  const dist = Math.min(Math.abs(h - center), 360 - Math.abs(h - center));
+  const w = clamp01(1 - dist / width);
+  // 색이 옅을수록 덜 바꾼다 (피부·흰 벽이 물들지 않게)
+  return w * w * (3 - 2 * w) * clamp01(d * 3);
+}
+
+/** 특정 색상 계열만 채도를 바꾼다 */
+function hueSat(c: RGB, center: number, width: number, sat: number): RGB {
+  const k = 1 + (sat - 1) * hueWeight(c, center, width);
+  const y = luma(c);
+  return [y + (c[0] - y) * k, y + (c[1] - y) * k, y + (c[2] - y) * k];
+}
+
+/** 검정을 들뜨게(lift), 흰색을 낮게(roll) — 바랜 느낌 */
+const fade = (c: RGB, lift: number, top = 1): RGB => c.map((v) => lift + v * (top - lift)) as RGB;
+
 // FFmpeg curves=preset=vintage 와 같은 점
 const VINTAGE = [
   curve([[0, 0.11], [0.42, 0.51], [1, 0.95]]),
@@ -85,7 +119,38 @@ const PRESETS: Record<FilterId, (c: RGB) => RGB> = {
     const e = eq(c, { saturation: 0.72, contrast: 0.88 });
     return balance(e.map((v) => 0.06 + v * 0.9) as RGB, [0.01, 0.01, 0.03], [0.02, 0.01, 0], [0.03, 0.02, -0.01]);
   },
-  forest: (c) => eq(balance(c, [-0.02, 0.03, -0.01], [-0.03, 0.06, -0.02], [0, 0.02, -0.01]), { saturation: 1.12, contrast: 1.05 })
+  forest: (c) => eq(balance(c, [-0.02, 0.03, -0.01], [-0.03, 0.06, -0.02], [0, 0.02, -0.01]), { saturation: 1.12, contrast: 1.05 }),
+  // 주황빛 밝은 곳 + 살짝 보랏빛 그림자
+  sunset: (c) =>
+    eq(gain(balance(c, [0.07, -0.02, 0.08], [0.12, 0.0, -0.04], [0.1, 0.03, -0.08]), [1.08, 0.94, 0.9]), {
+      saturation: 1.18,
+      contrast: 1.06
+    }),
+  // 하늘·바다의 파랑·청록만 진하게
+  ocean: (c) => eq(balance(hueSat(c, 200, 60, 1.5), [-0.02, 0.01, 0.04], [-0.03, 0.02, 0.05], [0, 0.01, 0.02]), { contrast: 1.05, brightness: 0.01 }),
+  // 밝고 부드러운 분홍빛
+  cherry: (c) =>
+    balance(eq(c, { contrast: 0.92, brightness: 0.04, saturation: 0.95 }), [0.03, -0.01, 0.03], [0.08, -0.01, 0.05], [0.05, 0, 0.03]),
+  // 빨강·주황을 진하게, 초록은 노랗게
+  autumn: (c) => {
+    const g = hueWeight(c, 110, 60);
+    const t: RGB = [c[0] + (c[1] - c[0]) * 0.55 * g, c[1], c[2] * (1 - 0.25 * g)];
+    return eq(balance(hueSat(t, 25, 45, 1.35), [0.02, 0, -0.02], [0.05, 0.02, -0.05], [0.03, 0.01, -0.03]), { contrast: 1.05 });
+  },
+  // 음식: 따뜻하고 진하게
+  food: (c) => eq(balance(c, [0.01, 0, -0.02], [0.05, 0.02, -0.05], [0.03, 0.02, -0.02]), { saturation: 1.22, contrast: 1.06, brightness: 0.02 }),
+  // 인물: 밝고 대비 낮게, 들뜬 검정
+  soft: (c) => balance(fade(eq(c, { contrast: 0.85, brightness: 0.05, saturation: 0.88 }), 0.05), [0, 0, 0.01], [0.02, 0, 0.01], [0.02, 0.01, 0.01]),
+  // 청록 그림자 + 주황 밝은 곳
+  cinema: (c) => eq(balance(c, [-0.05, 0.02, 0.07], [0.03, 0, -0.03], [0.08, 0.03, -0.07]), { contrast: 1.12, saturation: 0.95 }),
+  // 푸른 그림자 + 따뜻한 불빛, 대비 업
+  night: (c) => eq(balance(c, [-0.03, 0, 0.06], [0, 0, 0.02], [0.06, 0.03, -0.03]), { contrast: 1.15, saturation: 1.15, gamma: 1.05 }),
+  // 바랜 검정·흰색 + 누런 중간톤
+  retro: (c) => balance(fade(eq(c, { saturation: 0.8 }), 0.08, 0.93), [0.02, 0.02, -0.02], [0.03, 0.04, -0.06], [0.02, 0.02, -0.03]),
+  sepia: (c) => {
+    const y = luma(eq(c, { contrast: 1.05 }));
+    return [y * 1.07 + 0.03, y * 0.95 + 0.01, y * 0.78];
+  }
 };
 
 export interface Look {

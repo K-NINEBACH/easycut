@@ -5,7 +5,9 @@ import { formatTimePrecise } from '@shared/format';
 import {
   POSITION_LABELS,
   SIZE_LABELS,
+  SIZE_SCALE,
   SUBTITLE_PRESETS,
+  type PresetDef,
   buildSrt,
   effectiveStyle,
   resolveStyle
@@ -18,6 +20,14 @@ import { useTimelineLayout } from '../../hooks/useTimelineLayout';
 import { player } from '../Preview/player';
 import { SubtitleText, ensureSubtitleFonts } from '../Preview/SubtitleOverlay';
 import SpeechDialog from './SpeechDialog';
+import LiveSlider from './LiveSlider';
+
+/** 모양 카드용: 글자를 약 6배로, 테두리·상자 여백도 같은 비율로 */
+const CARD_ZOOM = 6.5;
+const cardStyle = (pr: PresetDef): ReturnType<typeof resolveStyle> => {
+  const r = resolveStyle({ presetId: pr.id, size: 'M', position: 'middle' });
+  return { ...r, size: Math.round(r.size * CARD_ZOOM), preset: { ...pr, outline: pr.outline * CARD_ZOOM * 0.6 } };
+};
 
 const focusEditor = (): void => {
   setTimeout(() => document.querySelector<HTMLTextAreaElement>('[data-testid=subtitle-text]')?.focus(), 0);
@@ -68,6 +78,7 @@ export default function SubtitlePanel(): JSX.Element {
   if (!def) return <div />;
   const target = selected && onlyThis ? selected.id : 'all';
   const shown = target === 'all' ? def : effectiveStyle(def, selected);
+  const free = typeof shown.x === 'number' && typeof shown.y === 'number';
   const setStyle = (st: Partial<SubtitleStyle>): void =>
     edit(target === 'all' ? '자막 모양 바꾸기' : '이 자막 모양 바꾸기', (p) => ops.setSubtitleStyle(p, target, st));
 
@@ -111,7 +122,7 @@ export default function SubtitlePanel(): JSX.Element {
             </label>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {SUBTITLE_PRESETS.map((pr) => (
             <button
               key={pr.id}
@@ -123,20 +134,58 @@ export default function SubtitlePanel(): JSX.Element {
               data-testid={`subtitle-style-${pr.id}`}
             >
               <div className="relative aspect-video w-full bg-gradient-to-br from-sky-700 to-emerald-600 [container-type:inline-size]">
-                <SubtitleText text="안녕하세요" style={resolveStyle({ presetId: pr.id, size: 'L', position: 'middle' })} />
+                {/* 카드가 작아 실제 비율로는 안 보이므로 글자만 크게 (테두리·상자 비율도 같이 키움) */}
+                <SubtitleText text="안녕" style={cardStyle(pr)} />
               </div>
               <div className="py-1">{pr.label}</div>
             </button>
           ))}
         </div>
-        <Choice label="글자 크기" options={SIZE_LABELS} value={shown.size} onChange={(size) => setStyle({ size })} testId="subtitle-size" />
+        {/* 크기: "가" 글자 크기로 단계를 보여 준다 */}
+        <div className="flex items-center gap-2">
+          <span className="w-14 shrink-0 text-xs text-gray-500">글자 크기</span>
+          <div className="flex flex-1 gap-1">
+            {SIZE_LABELS.map((o, i) => (
+              <button
+                key={o.id}
+                className={`flex h-8 flex-1 items-center justify-center rounded-lg border font-semibold transition-colors ${
+                  shown.size === o.id ? 'border-brand-300 bg-brand-100 text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+                style={{ fontSize: 10 + i * 2.5 }}
+                onClick={() => setStyle({ size: o.id, sizeScale: 1 })}
+                aria-pressed={shown.size === o.id}
+                aria-label={o.label}
+                title={o.label}
+                data-testid={`subtitle-size-${o.id}`}
+              >
+                가
+              </button>
+            ))}
+          </div>
+        </div>
+        <LiveSlider
+          label="크기 세밀 조절"
+          value={Math.round((shown.sizeScale ?? 1) * 100)}
+          min={SIZE_SCALE.min * 100}
+          max={SIZE_SCALE.max * 100}
+          step={5}
+          format={(v) => `${v}%`}
+          editLabel={target === 'all' ? '자막 크기 바꾸기' : '이 자막 크기 바꾸기'}
+          apply={(p, v) => ops.setSubtitleStyle(p, target, { sizeScale: v / 100 })}
+          testId="subtitle-size-scale"
+        />
         <Choice
           label="위치"
           options={POSITION_LABELS}
-          value={shown.position}
+          value={free ? null : shown.position}
           onChange={(position) => setStyle({ position })}
           testId="subtitle-position"
         />
+        <p className="text-xs text-gray-500" data-testid="subtitle-move-hint">
+          {free
+            ? '미리보기에서 옮긴 자리에 나와요. 위·가운데·아래를 누르면 원래 자리로 돌아가요.'
+            : '미리보기 화면에서 자막을 끌어 원하는 곳으로 옮길 수 있어요.'}
+        </p>
       </div>
 
       {list.length > 0 && (
@@ -248,7 +297,7 @@ function RowText({ id, text }: { id: string; text: string }): JSX.Element {
 function Choice<T extends string>(props: {
   label: string;
   options: { id: T; label: string }[];
-  value: T;
+  value: T | null;
   onChange: (v: T) => void;
   testId: string;
 }): JSX.Element {

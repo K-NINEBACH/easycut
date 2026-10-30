@@ -94,30 +94,33 @@ await win.waitForTimeout(800);
 const frame = win.locator('[data-testid=preview-canvas]').locator('..');
 const fb = await frame.boundingBox();
 const grab = async () => (await win.screenshot({ clip: fb })).toString('base64');
-const withSub = await grab();
-await win.evaluate(() => document.querySelector('[data-testid=subtitle-overlay]').style.visibility = 'hidden');
-const noSub = await grab();
-await win.evaluate(() => document.querySelector('[data-testid=subtitle-overlay]').style.visibility = '');
-// 화면 크기가 달라도 비교할 수 있게 0~1 비율 상자로
+// 자막을 숨겼을 때와 비교해 글자 영역을 0~1 비율 상자로 (화면 크기가 달라도 비교 가능)
 const W = 384, H = 216;
-const previewBox = await win.evaluate(
-  async ([a, b, W, H]) => {
-    const load = (src) => new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.src = 'data:image/png;base64,' + src; });
-    const px = async (src) => {
-      const c = document.createElement('canvas'); c.width = W; c.height = H;
-      const g = c.getContext('2d'); g.drawImage(await load(src), 0, 0, W, H);
-      return g.getImageData(0, 0, W, H).data;
-    };
-    const [x, y] = [await px(a), await px(b)];
-    let l = W, r = -1, t = H, btm = -1;
-    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
-      const k = (j * W + i) * 4;
-      if (Math.abs(x[k] - y[k]) + Math.abs(x[k + 1] - y[k + 1]) + Math.abs(x[k + 2] - y[k + 2]) > 90) { l = Math.min(l, i); r = Math.max(r, i); t = Math.min(t, j); btm = Math.max(btm, j); }
-    }
-    return { l: l / W, r: (r + 1) / W, t: t / H, b: (btm + 1) / H };
-  },
-  [withSub, noSub, W, H]
-);
+const previewBoxNow = async () => {
+  const withSub = await grab();
+  await win.evaluate(() => document.querySelector('[data-testid=subtitle-overlay]').style.visibility = 'hidden');
+  const noSub = await grab();
+  await win.evaluate(() => document.querySelector('[data-testid=subtitle-overlay]').style.visibility = '');
+  return win.evaluate(
+    async ([a, b, W, H]) => {
+      const load = (src) => new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.src = 'data:image/png;base64,' + src; });
+      const px = async (src) => {
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const g = c.getContext('2d'); g.drawImage(await load(src), 0, 0, W, H);
+        return g.getImageData(0, 0, W, H).data;
+      };
+      const [x, y] = [await px(a), await px(b)];
+      let l = W, r = -1, t = H, btm = -1;
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+        const k = (j * W + i) * 4;
+        if (Math.abs(x[k] - y[k]) + Math.abs(x[k + 1] - y[k + 1]) + Math.abs(x[k + 2] - y[k + 2]) > 90) { l = Math.min(l, i); r = Math.max(r, i); t = Math.min(t, j); btm = Math.max(btm, j); }
+      }
+      return { l: l / W, r: (r + 1) / W, t: t / H, b: (btm + 1) / H };
+    },
+    [withSub, noSub, W, H]
+  );
+};
+const previewBox = await previewBoxNow();
 
 const exportWith = async (mode) => {
   await win.locator('[data-testid=export-button]').click();
@@ -137,15 +140,61 @@ const burned = await exportWith(null);
 const fileOnly = await exportWith('파일로 따로');
 check(fileOnly.srtShown && existsSync(fileOnly.out.replace(/\.mp4$/, '.srt')), '"파일로 따로" → 영상 옆에 .srt');
 const raw = (file) => execFileSync(ffmpeg, ['-v', 'error', '-ss', '2', '-i', file, '-frames:v', '1', '-vf', `scale=${W}:${H}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']);
-const [x, y] = [raw(burned.out), raw(fileOnly.out)];
-let l = W, r = -1, t = H, btm = -1;
-for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
-  const k = (j * W + i) * 3;
-  if (Math.abs(x[k] - y[k]) + Math.abs(x[k + 1] - y[k + 1]) + Math.abs(x[k + 2] - y[k + 2]) > 90) { l = Math.min(l, i); r = Math.max(r, i); t = Math.min(t, j); btm = Math.max(btm, j); }
-}
-const renderBox = { l: l / W, r: (r + 1) / W, t: t / H, b: (btm + 1) / H };
+const plain = raw(fileOnly.out); // 자막을 굽지 않은 영상 = 비교 기준
+const renderBoxOf = (file) => {
+  const x = raw(file);
+  let l = W, r = -1, t = H, btm = -1;
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const k = (j * W + i) * 3;
+    if (Math.abs(x[k] - plain[k]) + Math.abs(x[k + 1] - plain[k + 1]) + Math.abs(x[k + 2] - plain[k + 2]) > 90) { l = Math.min(l, i); r = Math.max(r, i); t = Math.min(t, j); btm = Math.max(btm, j); }
+  }
+  return { l: l / W, r: (r + 1) / W, t: t / H, b: (btm + 1) / H };
+};
 const fmt = (o) => Object.values(o).map((v) => v.toFixed(3)).join(',');
-console.log(`  글자 영역 (왼,오,위,아래 비율) 미리보기 ${fmt(previewBox)} / 결과 ${fmt(renderBox)}`);
-const maxDiff = Math.max(...['l', 'r', 't', 'b'].map((k) => Math.abs(previewBox[k] - renderBox[k])));
-check(maxDiff < 0.02, `미리보기 자막 ≈ 결과 자막 (가장 큰 차이 ${(maxDiff * 100).toFixed(1)}%)`);
+const compare = (name, pv, rb) => {
+  console.log(`  ${name} 글자 영역 (왼,오,위,아래 비율) 미리보기 ${fmt(pv)} / 결과 ${fmt(rb)}`);
+  const maxDiff = Math.max(...['l', 'r', 't', 'b'].map((k) => Math.abs(pv[k] - rb[k])));
+  check(maxDiff < 0.02, `${name}: 미리보기 자막 ≈ 결과 자막 (가장 큰 차이 ${(maxDiff * 100).toFixed(1)}%)`);
+};
+compare('노랑·아래', previewBox, renderBoxOf(burned.out));
+
+// 8) 미리보기에서 끌어 옮기기 + 노란 상자 + 아주 크게 + 세밀 조절 → 결과도 같은 자리·크기 (PRD 13장 #13)
+// 첫 자막(모든 자막 모양을 따름)을 골라 "모든 자막" 에 적용되게
+await win.locator('[data-testid=subtitle-row]').first().locator('button').first().click();
+await win.evaluate(() => window.__ezcut.useUiStore.getState().setPlaying(false));
+await win.evaluate(() => window.__ezcut.useUiStore.getState().setPlayhead(2));
+check(!(await win.locator('[data-testid=subtitle-only-this]').isChecked()), '첫 자막은 "이 자막만" 꺼짐');
+await win.locator('[data-testid=subtitle-style-yellowbox]').click();
+await win.locator('[data-testid=subtitle-size-XL]').click();
+const ov = await win.locator('[data-testid=subtitle-overlay]').boundingBox();
+const undoBefore = await win.evaluate(() => window.__ezcut.useProjectStore.getState().past.length);
+await win.mouse.move(ov.x + ov.width / 2, ov.y + ov.height / 2);
+await win.mouse.down();
+await win.mouse.move(ov.x + ov.width / 2 - fb.width * 0.15, ov.y + ov.height / 2 - fb.height * 0.45, { steps: 10 });
+await win.mouse.up();
+let st = (await state(win)).defaultSubtitleStyle;
+check(typeof st.x === 'number' && st.y < 0.6, `끌어서 옮김 (x ${st.x?.toFixed(2)}, y ${st.y?.toFixed(2)})`);
+check((await win.evaluate(() => window.__ezcut.useProjectStore.getState().past.length)) === undoBefore + 1, '옮기기 = 되돌리기 1단계');
+await win.keyboard.press('Control+z');
+check(typeof (await state(win)).defaultSubtitleStyle.x !== 'number', 'Ctrl+Z 로 원래 자리');
+await win.keyboard.press('Control+y');
+check(typeof (await state(win)).defaultSubtitleStyle.x === 'number', 'Ctrl+Y 로 다시 옮김');
+// 세밀 조절 120%
+await win.locator('[data-testid=subtitle-size-scale]').evaluate((el) => {
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  set.call(el, '120');
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+});
+st = (await state(win)).defaultSubtitleStyle;
+check(st.sizeScale === 1.2 && st.size === 'XL' && st.presetId === 'yellowbox', `크기 아주 크게 × 120% (${st.size}, ${st.sizeScale})`);
+await win.evaluate(() => window.__ezcut.useUiStore.getState().setPlayhead(2));
+await win.waitForTimeout(800);
+await win.screenshot({ path: join(shotDir, 'm9-moved.png') });
+const movedPreview = await previewBoxNow();
+const moved = await exportWith(null);
+compare('옮긴 노란 상자', movedPreview, renderBoxOf(moved.out));
+// 위치 단추를 누르면 원래 자리로
+await win.locator('[data-testid=subtitle-position-bottom]').click();
+check(typeof (await state(win)).defaultSubtitleStyle.x !== 'number', '[아래] 를 누르면 옮긴 자리 지움');
 await app.close();

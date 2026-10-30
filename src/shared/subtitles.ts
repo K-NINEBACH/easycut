@@ -34,6 +34,8 @@ export interface PresetDef {
   outline: number;
   /** 반투명 상자 (rgba 의 알파 0~1) */
   boxAlpha?: number;
+  /** 상자 색 #RRGGBB (기본 검정) */
+  boxColor?: string;
   /** 크기 배율 */
   scale: number;
   /** 이 모양을 고르면 기본으로 쓰는 위치 */
@@ -45,13 +47,26 @@ export const SUBTITLE_PRESETS: PresetDef[] = [
   { id: 'box', label: '반투명 박스', font: FONTS.sans, color: '#FFFFFF', outlineColor: '#000000', outline: 14, boxAlpha: 0.6, scale: 1, defaultPosition: 'bottom' },
   { id: 'yellow', label: '노랑 강조', font: FONTS.sans, color: '#FFE14D', outlineColor: '#000000', outline: 4, scale: 1, defaultPosition: 'bottom' },
   { id: 'hand', label: '손글씨', font: FONTS.pen, color: '#FFFFFF', outlineColor: '#000000', outline: 3, scale: 1.25, defaultPosition: 'bottom' },
-  { id: 'title', label: '상단 제목', font: FONTS.title, color: '#FFFFFF', outlineColor: '#000000', outline: 5, scale: 1.5, defaultPosition: 'top' }
+  { id: 'title', label: '상단 제목', font: FONTS.title, color: '#FFFFFF', outlineColor: '#000000', outline: 5, scale: 1.5, defaultPosition: 'top' },
+  // 추가 모양 (PRD 13장 #12)
+  { id: 'dark', label: '검은 글씨', font: FONTS.sans, color: '#1A1A1A', outlineColor: '#FFFFFF', outline: 4, scale: 1, defaultPosition: 'bottom' },
+  { id: 'pink', label: '분홍 테두리', font: FONTS.sans, color: '#FFFFFF', outlineColor: '#FF4F8B', outline: 5, scale: 1, defaultPosition: 'bottom' },
+  { id: 'mint', label: '민트 테두리', font: FONTS.sans, color: '#FFFFFF', outlineColor: '#0E9F7E', outline: 5, scale: 1, defaultPosition: 'bottom' },
+  { id: 'whitebox', label: '흰 상자', font: FONTS.sans, color: '#17243A', outlineColor: '#000000', outline: 14, boxAlpha: 0.9, boxColor: '#FFFFFF', scale: 1, defaultPosition: 'bottom' },
+  { id: 'yellowbox', label: '노란 상자', font: FONTS.sans, color: '#1A1A1A', outlineColor: '#000000', outline: 14, boxAlpha: 0.95, boxColor: '#FFD83D', scale: 1, defaultPosition: 'bottom' },
+  { id: 'handyellow', label: '손글씨 노랑', font: FONTS.pen, color: '#FFE14D', outlineColor: '#000000', outline: 3, scale: 1.25, defaultPosition: 'bottom' },
+  { id: 'handpink', label: '손글씨 분홍', font: FONTS.pen, color: '#FFFFFF', outlineColor: '#FF4F8B', outline: 4, scale: 1.25, defaultPosition: 'bottom' },
+  { id: 'titleyellow', label: '노랑 제목', font: FONTS.title, color: '#FFE14D', outlineColor: '#000000', outline: 5, scale: 1.5, defaultPosition: 'top' }
 ];
 
 export const PRESET_BY_ID = Object.fromEntries(SUBTITLE_PRESETS.map((p) => [p.id, p])) as Record<SubtitleStyleId, PresetDef>;
 
 /** 글자 크기 (ASS 크기, 1080p 기준) */
-export const SIZE_PX: Record<SubtitleStyle['size'], number> = { S: 48, M: 60, L: 76 };
+export const SIZE_PX: Record<SubtitleStyle['size'], number> = { XS: 38, S: 48, M: 60, L: 76, XL: 96 };
+/** 크기 세밀 조절 범위 */
+export const SIZE_SCALE = { min: 0.7, max: 1.5 };
+/** 직접 옮길 때 화면 가장자리에서 띄울 최소 비율 */
+export const FREE_POS_MARGIN = 0.04;
 /** 화면 위·아래 여백 */
 export const MARGIN_V = 64;
 export const MARGIN_H = 80;
@@ -59,9 +74,11 @@ export const MARGIN_H = 80;
 export const MAX_LINE_CHARS = 20;
 
 export const SIZE_LABELS: { id: SubtitleStyle['size']; label: string }[] = [
+  { id: 'XS', label: '아주 작게' },
   { id: 'S', label: '작게' },
   { id: 'M', label: '보통' },
-  { id: 'L', label: '크게' }
+  { id: 'L', label: '크게' },
+  { id: 'XL', label: '아주 크게' }
 ];
 export const POSITION_LABELS: { id: SubtitleStyle['position']; label: string }[] = [
   { id: 'top', label: '위' },
@@ -78,11 +95,25 @@ export interface ResolvedStyle {
   /** ASS 크기 (= 한 줄 높이) */
   size: number;
   position: SubtitleStyle['position'];
+  /** 직접 옮긴 자리 (1080p 픽셀, 자막 덩어리 가운데). 없으면 position */
+  pos?: { x: number; y: number };
 }
+
+const clampRange = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 export function resolveStyle(st: SubtitleStyle): ResolvedStyle {
   const preset = PRESET_BY_ID[st.presetId] ?? PRESET_BY_ID.basic;
-  return { preset, size: Math.round(SIZE_PX[st.size] * preset.scale), position: st.position };
+  const scale = clampRange(st.sizeScale ?? 1, SIZE_SCALE.min, SIZE_SCALE.max);
+  const size = Math.round((SIZE_PX[st.size] ?? SIZE_PX.M) * preset.scale * scale);
+  const free = typeof st.x === 'number' && typeof st.y === 'number';
+  const m = FREE_POS_MARGIN;
+  const pos = free
+    ? {
+        x: Math.round(clampRange(st.x!, m, 1 - m) * PLAY_RES.width),
+        y: Math.round(clampRange(st.y!, m, 1 - m) * PLAY_RES.height)
+      }
+    : undefined;
+  return { preset, size, position: st.position, ...(pos ? { pos } : {}) };
 }
 
 /**
@@ -210,7 +241,9 @@ export function buildAss(layout: TimelineLayout, subs: Subtitle[], def: Subtitle
     const name = `${r.preset.id}_${r.size}_${r.position}`;
     styles.set(name, r);
     const text = wrapSubtitle(sub.text).map(escapeAssText).join('\\N');
-    events.push(`Dialogue: 0,${assTime(start)},${assTime(end)},${name},,0,0,0,,${text}`);
+    // 직접 옮긴 자막: 덩어리 가운데를 그 점에 (미리보기도 가운데 기준)
+    const at = r.pos ? `{\\an5\\pos(${r.pos.x},${r.pos.y})}` : '';
+    events.push(`Dialogue: 0,${assTime(start)},${assTime(end)},${name},,0,0,0,,${at}${text}`);
   }
   const styleLines = [...styles].map(([name, r]) => {
     const p = r.preset;
@@ -222,7 +255,7 @@ export function buildAss(layout: TimelineLayout, subs: Subtitle[], def: Subtitle
       assColor(p.color),
       assColor(p.color),
       // BorderStyle 3(상자)는 OutlineColour 로 상자를 칠한다
-      box ? assColor('#000000', 1 - p.boxAlpha!) : assColor(p.outlineColor),
+      box ? assColor(p.boxColor ?? '#000000', 1 - p.boxAlpha!) : assColor(p.outlineColor),
       assColor('#000000', 1),
       p.font.bold ? -1 : 0,
       0, 0, 0, 100, 100, 0, 0,

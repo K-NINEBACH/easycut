@@ -11,7 +11,7 @@ const { app, win } = await launch(dataDir);
 await win.evaluate((dir) => window.__ezcut.importPaths([dir]), FIXTURES);
 await waitReady(win);
 
-const FILTERS = ['none', 'vivid', 'warm', 'cool', 'film', 'mono', 'bright', 'mood', 'forest'];
+const FILTERS = ['none', 'vivid', 'warm', 'cool', 'film', 'mono', 'bright', 'mood', 'forest', 'sunset', 'ocean', 'cherry', 'autumn', 'food', 'soft', 'cinema', 'night', 'retro', 'sepia'];
 const ids = Object.fromEntries((await state(win)).media.map((m) => [m.fileName, m.id]));
 // 같은 가로 영상 1~2초 구간을 필터만 바꿔 9번 + HDR 영상 1번.
 // 샘플은 원색 100% 막대라 채도를 올리는 필터 효과가 안 보이므로, 가로 영상에는 채도·대비를 낮춘 보정을 똑같이 건다
@@ -42,7 +42,9 @@ const blocks = (rgb, w = 192, h = 108) => {
 };
 const diff = (a, b) => a.reduce((acc, p, i) => acc + Math.abs(p[0] - b[i][0]) + Math.abs(p[1] - b[i][1]) + Math.abs(p[2] - b[i][2]), 0) / (a.length * 3);
 
-// 미리보기: 각 장면 0.5초 지점
+// 미리보기: 각 장면 0.5초 지점 (장면이 많아 첫 화면이 늦게 뜨므로 한 번 기다린 뒤)
+await win.evaluate(() => window.__ezcut.useUiStore.getState().setPlayhead(0.5));
+await win.waitForTimeout(3000);
 const preview = [];
 for (let i = 0; i < labels.length; i++) {
   await win.evaluate((t) => window.__ezcut.useUiStore.getState().setPlayhead(t), i + 0.5);
@@ -66,7 +68,7 @@ for (let i = 0; i < labels.length; i++) {
 await win.locator('[data-testid=clip]').first().click();
 await win.getByRole('button', { name: '필터', exact: true }).click();
 await win.locator('[data-testid=filter-film]').waitFor();
-check((await win.locator('[data-testid^=filter-]').filter({ has: win.locator('img') }).count()) >= 9, '필터 카드 9개 (썸네일 미리보기)');
+check((await win.locator('[data-testid^=filter-]').filter({ has: win.locator('img') }).count()) >= 19, '필터 카드 19개 (썸네일 미리보기)');
 await win.locator('[data-testid=filter-film]').click();
 check((await state(win)).videoTrack[0].filter === 'film', '카드를 누르면 필터 적용');
 await win.screenshot({ path: join(shotDir, 'm6-panel.png') });

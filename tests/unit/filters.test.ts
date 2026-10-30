@@ -16,8 +16,32 @@ const samples: [number, number, number][] = [
 ];
 
 describe('필터 색 함수 (PRD F7)', () => {
-  it('9종 (원본 + 8개)', () => {
-    expect(FILTERS.map((f) => f.name)).toEqual(['원본', '선명하게', '따뜻하게', '시원하게', '필름', '흑백', '밝게', '감성', '초록 숲']);
+  it('19종 (원본 + PRD 8개 + 추가 10개, PRD 13장 #12)', () => {
+    expect(FILTERS.map((f) => f.name)).toEqual([
+      '원본', '선명하게', '따뜻하게', '시원하게', '필름', '흑백', '밝게', '감성', '초록 숲',
+      '노을', '푸른 바다', '벚꽃', '단풍', '맛있게', '뽀얗게', '영화처럼', '야경', '레트로', '세피아'
+    ]);
+    expect(new Set(FILTERS.map((f) => f.id)).size).toBe(FILTERS.length);
+  });
+
+  it('추가 필터는 서로 다르고 원본과도 다름', () => {
+    const probe: [number, number, number][] = [[0.8, 0.5, 0.3], [0.2, 0.4, 0.8], [0.3, 0.6, 0.2], [0.5, 0.5, 0.5]];
+    const sig = (id: (typeof FILTERS)[number]['id']): number[] =>
+      probe.flatMap((c) => lookFunction({ filter: id, filterStrength: 1, adjust: zero })(c));
+    const sigs = FILTERS.map((f) => sig(f.id));
+    for (let i = 0; i < sigs.length; i++)
+      for (let j = i + 1; j < sigs.length; j++) {
+        const diff = Math.max(...sigs[i].map((v, k) => Math.abs(v - sigs[j][k])));
+        expect(diff, `${FILTERS[i].name} ↔ ${FILTERS[j].name}`).toBeGreaterThan(0.02);
+      }
+  });
+
+  it('푸른 바다는 파랑을 진하게, 회색은 그대로 둠', () => {
+    const ocean = lookFunction({ filter: 'ocean', filterStrength: 1, adjust: zero });
+    const sky = ocean([0.3, 0.55, 0.85]);
+    expect(sky[2] - sky[0]).toBeGreaterThan(0.85 - 0.3);
+    const gray = ocean([0.5, 0.5, 0.5]);
+    expect(Math.abs(gray[0] - gray[1])).toBeLessThan(0.06);
   });
 
   it('강도 0% 는 원본과 같음 → LUT 를 쓰지 않음', () => {

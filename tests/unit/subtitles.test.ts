@@ -81,6 +81,45 @@ describe('ASS (영상에 굽기)', () => {
     const a2 = buildAss(layoutTimeline(q.videoTrack, q.transitions), q.subtitles, q.defaultSubtitleStyle);
     expect(a2).toMatch(/Style: box_60_bottom,Pretendard,60,&H00FFFFFF,&H00FFFFFF,&H66000000,&HFF000000,-1,0,0,0,100,100,0,0,3,14,0,2/);
   });
+  it('색 상자 (노란 상자 = 노란 상자색, 검은 글씨)', () => {
+    const q = produce(p, (d) => setSubtitleStyle(d, 'all', { presetId: 'yellowbox' }));
+    const a2 = buildAss(layoutTimeline(q.videoTrack, q.transitions), q.subtitles, q.defaultSubtitleStyle);
+    // &HAABBGGRR: 0.95 불투명 → 투명도 0D, #FFD83D → 3DD8FF
+    expect(a2).toMatch(/Style: yellowbox_60_bottom,Pretendard,60,&H001A1A1A,&H001A1A1A,&H0D3DD8FF,/);
+  });
+});
+
+describe('크기 세밀 조절·직접 옮기기 (PRD 13장 #13)', () => {
+  it('5단계 크기 × 세밀 배율 (범위 밖은 0.7~1.5 로)', () => {
+    expect(resolveStyle({ presetId: 'basic', size: 'XS', position: 'bottom' }).size).toBe(38);
+    expect(resolveStyle({ presetId: 'basic', size: 'XL', position: 'bottom' }).size).toBe(96);
+    expect(resolveStyle({ presetId: 'basic', size: 'M', position: 'bottom', sizeScale: 1.2 }).size).toBe(72);
+    expect(resolveStyle({ presetId: 'basic', size: 'M', position: 'bottom', sizeScale: 9 }).size).toBe(90);
+  });
+  it('옮긴 자리는 ASS \\an5\\pos 로, 가장자리 밖으로는 못 나감', () => {
+    const q = produce(base(), (d) => {
+      addSubtitleAt(d, 1, 2, '여기');
+      setSubtitleStyle(d, 'all', { x: 0.25, y: 0.3 });
+    });
+    const a = buildAss(layoutTimeline(q.videoTrack, q.transitions), q.subtitles, q.defaultSubtitleStyle);
+    expect(a).toContain(',,0,0,0,,{\\an5\\pos(480,324)}여기');
+    expect(resolveStyle({ presetId: 'basic', size: 'M', position: 'bottom', x: -1, y: 2 }).pos).toEqual({ x: 77, y: 1037 });
+  });
+  it('모양을 바꿔도 옮긴 자리는 그대로, 위·가운데·아래를 고르면 원래 자리로', () => {
+    let q = produce(base(), (d) => {
+      addSubtitleAt(d, 1, 2, '하나');
+      setSubtitleStyle(d, 'all', { x: 0.5, y: 0.5 });
+      setSubtitleStyle(d, 'all', { presetId: 'titleyellow' });
+    });
+    expect(q.defaultSubtitleStyle).toMatchObject({ x: 0.5, y: 0.5, position: 'top' });
+    // 이 자막만 아래로: 전체의 옮긴 자리를 null 로 덮음
+    q = produce(q, (d) => setSubtitleStyle(d, d.subtitles[0].id, { position: 'bottom' }));
+    const eff = { ...q.defaultSubtitleStyle, ...q.subtitles[0].styleOverride };
+    expect(resolveStyle(eff).pos).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(eff)).x).toBeNull();
+    q = produce(q, (d) => setSubtitleStyle(d, 'all', { position: 'middle' }));
+    expect(q.defaultSubtitleStyle.x).toBeUndefined();
+  });
 });
 
 describe('SRT (유튜브 자막)', () => {

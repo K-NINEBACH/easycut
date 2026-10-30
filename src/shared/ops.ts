@@ -3,6 +3,7 @@
 import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, MusicSettings, Project, Speed, Subtitle, SubtitleStyle, TransitionId, VideoClip } from './types';
 import { IMAGE_DEFAULT_DURATION, MIN_CLIP_LENGTH } from './types';
 import { clipLength, isImageClip, layoutMusic, layoutTimeline, subtitleRange } from './timeline';
+import { PRESET_BY_ID } from './subtitles';
 
 export const newId = (): string => globalThis.crypto.randomUUID();
 
@@ -402,13 +403,22 @@ export function mergeWithNextSubtitle(p: Project, id: string): boolean {
  */
 export function setSubtitleStyle(p: Project, target: 'all' | string, style: Partial<SubtitleStyle>): void {
   const st = { ...style };
-  if (st.presetId && st.position === undefined) st.position = st.presetId === 'title' ? 'top' : 'bottom';
+  if (st.presetId && st.position === undefined) st.position = PRESET_BY_ID[st.presetId]?.defaultPosition ?? 'bottom';
+  // 위·가운데·아래를 직접 고르면 끌어서 옮긴 자리는 지운다 (모양만 바꾸면 자리는 그대로)
+  const clearFree = style.position !== undefined && style.x === undefined;
   if (target === 'all') {
     Object.assign(p.defaultSubtitleStyle, st);
+    if (clearFree) {
+      delete p.defaultSubtitleStyle.x;
+      delete p.defaultSubtitleStyle.y;
+    }
     return;
   }
   const s = p.subtitles.find((x) => x.id === target);
-  if (s) s.styleOverride = { ...(s.styleOverride ?? {}), ...st };
+  if (!s) return;
+  s.styleOverride = { ...(s.styleOverride ?? {}), ...st };
+  // 이 자막만: 전체 자막의 옮긴 자리를 덮어야 하므로 지우지 않고 null
+  if (clearFree) Object.assign(s.styleOverride, { x: null, y: null });
 }
 
 /** 말소리로 만든 자막 넣기 (PRD 4-2): 대상 장면에 붙어 있던 자막은 지우고 새로 넣는다 */

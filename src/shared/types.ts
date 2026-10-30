@@ -42,7 +42,18 @@ export type FilterId =
   | 'mono'
   | 'bright'
   | 'mood'
-  | 'forest';
+  | 'forest'
+  // 추가 필터 (PRD 13장 #12)
+  | 'sunset'
+  | 'ocean'
+  | 'cherry'
+  | 'autumn'
+  | 'food'
+  | 'soft'
+  | 'cinema'
+  | 'night'
+  | 'retro'
+  | 'sepia';
 
 export interface ColorAdjust {
   brightness: number; // -50 ~ 50
@@ -86,12 +97,31 @@ export interface Transition {
   duration: number; // 0.3 | 0.6 | 1.0 (실제 적용 길이는 timeline.ts 에서 자동 축소)
 }
 
-export type SubtitleStyleId = 'basic' | 'box' | 'yellow' | 'hand' | 'title';
+export type SubtitleStyleId =
+  | 'basic'
+  | 'box'
+  | 'yellow'
+  | 'hand'
+  | 'title'
+  // 추가 모양 (PRD 13장 #12)
+  | 'dark'
+  | 'pink'
+  | 'mint'
+  | 'whitebox'
+  | 'yellowbox'
+  | 'handyellow'
+  | 'handpink'
+  | 'titleyellow';
 
 export interface SubtitleStyle {
   presetId: SubtitleStyleId;
-  size: 'S' | 'M' | 'L';
+  size: 'XS' | 'S' | 'M' | 'L' | 'XL';
   position: 'top' | 'middle' | 'bottom';
+  /** 크기 세밀 조절 배율 (0.7~1.5, 없으면 1) — PRD 13장 #13 */
+  sizeScale?: number;
+  /** 직접 옮긴 자리: 자막 덩어리 가운데가 화면의 x·y 비율(0~1). 있으면 position 대신 씀 — PRD 13장 #13 */
+  x?: number | null;
+  y?: number | null;
 }
 
 export interface Subtitle {

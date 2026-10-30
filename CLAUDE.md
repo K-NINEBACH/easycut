@@ -96,7 +96,8 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
       내보내기 창의 자막 선택은 M9 에서 추가. `EZ_KEEP=1` 이면 렌더 통합 테스트 결과물을 남김
 - [x] M6 필터 — 색 변환은 `src/shared/filters.ts` 한 곳. 33³ LUT 로 구워 미리보기(3D 텍스처)와
       렌더(`lut3d=...:interp=trilinear`, 작업 폴더 cwd 기준 파일명)가 같은 표를 씀. m6-filter E2E 가 필터별
-      미리보기↔결과 프레임 색 차이를 잼 (현재 평균 3/255 이하). 화면 채우기 선택은 자르기 탭(16:9 아닌 장면만)
+      미리보기↔결과 프레임 색 차이를 잼 (현재 평균 3/255 이하). 2026-10-30 필터 19개(PRD 13장 #12),
+      색상 계열별 채도 `hueSat`, 바랜 느낌 `fade` 도우미. 화면 채우기 선택은 자르기 탭(16:9 아닌 장면만)
 - [x] M7 전환 — 렌더 2단계 `buildChainCommand` (컷=concat, 전환=xfade+acrossfade, 매 단계 뒤 fps 로 시간 단위 맞춤),
       장면 16개 넘으면 묶음별로 잇고 묶음끼리 다시 이음. 전환이 하나도 없으면 다시 인코딩 없이 concat 복사.
       ◆ 는 장면 아래쪽(가운데는 자르기 손잡이 자리). 전환 탭 `Panel/TransitionPanel.tsx`
@@ -109,6 +110,9 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
         CSS 글자 크기 = ASS 크기 × unitsPerEm/(winAscent+winDescent) (libass 기준). 미리보기 CSS 이름은 "EzSub …"
         (앱 화면 글꼴 Pretendard 와 섞이지 않게). 렌더는 작업 폴더에 글꼴·subs.ass 복사 후 상대 경로로 ass 필터.
         m9-subtitle E2E 가 미리보기↔결과 자막 글자 영역을 비교 (현재 차이 1% 미만)
+        2026-10-30 (PRD 13장 #12·#13): 모양 13개(상자 색 `boxColor`), 크기 5단계 + `sizeScale`,
+        미리보기에서 끌어 옮기기 `x·y` → ASS `{\an5\pos(x,y)}` / 미리보기 translate(-50%,-50%). 끌기는 `SubtitleOverlay` 의 startDrag
+        (liveEdit 로 되돌리기 1단계). "이 자막만" 의 위치 되돌리기는 override 에 x·y = null
   - [x] M9b 말소리 자동 생성 — `services/SubtitleService.ts`: 대상 장면 소리를 타임라인 순서로 16kHz WAV 하나로 →
         whisper-cli(-l ko -oj -pp) → `subtitles.segmentsToSubtitles` (시작 장면에 붙이고 두 줄씩 나눔).
         whisper.cpp v1.9.5(b5454) CPU 빌드. 17초 샘플 small 모델로 약 6초

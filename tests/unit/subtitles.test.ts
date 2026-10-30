@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { produce } from 'immer';
-import { buildAss, buildSrt, escapeAssText, resolveStyle, segmentsToSubtitles, wrapSubtitle } from '../../src/shared/subtitles';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { buildAss, buildSrt, escapeAssText, FONTS, resolveStyle, segmentsToSubtitles, usedFontFiles, wrapSubtitle } from '../../src/shared/subtitles';
 import {
   addSubtitleAt,
   clearSubtitleStyle,
@@ -86,6 +88,45 @@ describe('ASS (영상에 굽기)', () => {
     const a2 = buildAss(layoutTimeline(q.videoTrack, q.transitions), q.subtitles, q.defaultSubtitleStyle);
     // &HAABBGGRR: 0.95 불투명 → 투명도 0D, #FFD83D → 3DD8FF
     expect(a2).toMatch(/Style: yellowbox_60_bottom,Pretendard,60,&H001A1A1A,&H001A1A1A,&H0D3DD8FF,/);
+  });
+});
+
+describe('글꼴·색 직접 고르기 (PRD 13장 #14)', () => {
+  it('글꼴 파일이 모두 있고 이름이 겹치지 않음', () => {
+    const files = Object.values(FONTS).map((f) => f.file);
+    expect(new Set(files).size).toBe(files.length);
+    for (const f of files) expect(existsSync(join(__dirname, '../../resources/fonts', f)), f).toBe(true);
+  });
+  it('고른 글꼴·글자 색·테두리 색이 ASS Style 에 들어가고 이름으로 구분', () => {
+    const q = produce(base(), (d) => {
+      addSubtitleAt(d, 1, 2, '하나');
+      setSubtitleStyle(d, 'all', { fontId: 'jua', color: '#ff8a3d', outlineColor: '#1A1A1A' });
+    });
+    const a = buildAss(layoutTimeline(q.videoTrack, q.transitions), q.subtitles, q.defaultSubtitleStyle);
+    expect(a).toContain('Style: basic_60_bottom_jua_FF8A3D_1A1A1A,Jua,60,&H003D8AFF,&H003D8AFF,&H001A1A1A,&HFF000000,0,');
+    expect(usedFontFiles(layoutTimeline(q.videoTrack, q.transitions), q.subtitles, q.defaultSubtitleStyle)).toEqual(['Jua-Regular.ttf']);
+  });
+  it('상자 모양이면 테두리 색 = 상자 색, 잘못된 값은 무시', () => {
+    expect(resolveStyle({ presetId: 'box', size: 'M', position: 'bottom', outlineColor: '#123456' }).preset.boxColor).toBe('#123456');
+    const r = resolveStyle({ presetId: 'basic', size: 'M', position: 'bottom', fontId: 'nope', color: 'red' });
+    expect(r.preset.font.family).toBe('Pretendard');
+    expect(r.preset.color).toBe('#FFFFFF');
+    expect(r.custom).toBeUndefined();
+  });
+  it('모양 카드를 고르면 직접 고른 글꼴·색은 지움 (이 자막만은 null 로 덮음)', () => {
+    let q = produce(base(), (d) => {
+      addSubtitleAt(d, 1, 2, '하나');
+      setSubtitleStyle(d, 'all', { fontId: 'dokdo', color: '#FF4F8B' });
+      setSubtitleStyle(d, 'all', { presetId: 'yellow' });
+    });
+    expect(q.defaultSubtitleStyle.fontId).toBeUndefined();
+    expect(q.defaultSubtitleStyle.color).toBeUndefined();
+    q = produce(q, (d) => {
+      setSubtitleStyle(d, 'all', { color: '#5AB8FF' });
+      setSubtitleStyle(d, d.subtitles[0].id, { presetId: 'mint' });
+    });
+    const eff = { ...q.defaultSubtitleStyle, ...q.subtitles[0].styleOverride };
+    expect(resolveStyle(eff).preset.color).toBe('#FFFFFF');
   });
 });
 

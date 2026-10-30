@@ -10,6 +10,7 @@ import { useUiStore } from './store/ui';
 import { importPaths, pickAndImport, prepareAllMedia, subscribeMediaJobs } from './store/mediaActions';
 import { useAutosave } from './hooks/useAutosave';
 import * as previewModule from './components/Preview/PreviewArea';
+import { FONT_IDS } from '@shared/subtitles';
 
 // 테스트(Playwright)에서 상태를 들여다볼 수 있게
 if (import.meta.env.DEV || window.api.isTest) {
@@ -18,7 +19,9 @@ if (import.meta.env.DEV || window.api.isTest) {
     useUiStore,
     importPaths,
     /** 미리보기 엔진 (음악 소리 크기 등 확인용) */
-    preview: () => previewModule.previewEngine
+    preview: () => previewModule.previewEngine,
+    /** 자막 글꼴 목록 (글꼴별 비교 시험용) */
+    fontIds: FONT_IDS
   };
 }
 

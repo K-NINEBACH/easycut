@@ -1,7 +1,7 @@
 {
   "name": "easycut",
   "productName": "쉬운편집",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "초보자용 영상 편집기",
   "main": "./out/main/index.js",
   "private": true,

@@ -20,6 +20,7 @@ import { useTimelineLayout } from '../../hooks/useTimelineLayout';
 
 // 동봉 글꼴을 한 번만 등록. 화면 글꼴(Pretendard 일반 굵기)과 섞이지 않게 자막 전용 이름으로
 const cssFamily = (family: string): string => `EzSub ${family}`;
+export const subtitleCssFamily = cssFamily;
 let fontsInjected = false;
 export function ensureSubtitleFonts(): void {
   if (fontsInjected) return;

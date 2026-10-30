@@ -122,6 +122,12 @@ export interface SubtitleStyle {
   /** 직접 옮긴 자리: 자막 덩어리 가운데가 화면의 x·y 비율(0~1). 있으면 position 대신 씀 — PRD 13장 #13 */
   x?: number | null;
   y?: number | null;
+  /** 직접 고른 글꼴 (subtitles.ts FONTS 의 키). 없으면 모양의 글꼴 — PRD 13장 #14 */
+  fontId?: string | null;
+  /** 직접 고른 글자 색 #RRGGBB. 없으면 모양의 색 */
+  color?: string | null;
+  /** 직접 고른 테두리 색 (상자 모양이면 상자 색) */
+  outlineColor?: string | null;
 }
 
 export interface Subtitle {

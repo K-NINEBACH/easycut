@@ -7,18 +7,21 @@ import {
   SIZE_LABELS,
   SIZE_SCALE,
   SUBTITLE_PRESETS,
+  COLOR_SWATCHES,
+  FONTS,
+  FONT_IDS,
   type PresetDef,
   buildSrt,
   effectiveStyle,
   resolveStyle
 } from '@shared/subtitles';
 import { subtitleRange } from '@shared/timeline';
-import type { SubtitleStyle } from '@shared/types';
+import type { Project, SubtitleStyle } from '@shared/types';
 import { edit, getProject, liveEdit, useProjectStore } from '../../store/project';
 import { useUiStore, toast } from '../../store/ui';
 import { useTimelineLayout } from '../../hooks/useTimelineLayout';
 import { player } from '../Preview/player';
-import { SubtitleText, ensureSubtitleFonts } from '../Preview/SubtitleOverlay';
+import { SubtitleText, ensureSubtitleFonts, subtitleCssFamily } from '../Preview/SubtitleOverlay';
 import SpeechDialog from './SpeechDialog';
 import LiveSlider from './LiveSlider';
 
@@ -79,6 +82,9 @@ export default function SubtitlePanel(): JSX.Element {
   const target = selected && onlyThis ? selected.id : 'all';
   const shown = target === 'all' ? def : effectiveStyle(def, selected);
   const free = typeof shown.x === 'number' && typeof shown.y === 'number';
+  const resolved = resolveStyle(shown);
+  const shownFont = resolved.preset.font.family;
+  const isBox = resolved.preset.boxAlpha !== undefined;
   const setStyle = (st: Partial<SubtitleStyle>): void =>
     edit(target === 'all' ? '자막 모양 바꾸기' : '이 자막 모양 바꾸기', (p) => ops.setSubtitleStyle(p, target, st));
 
@@ -141,6 +147,47 @@ export default function SubtitlePanel(): JSX.Element {
             </button>
           ))}
         </div>
+        {/* 글꼴: 이름을 그 글꼴로 보여 준다 */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-gray-500">글꼴</span>
+          <div className="grid h-56 shrink-0 auto-rows-max grid-cols-2 gap-1 overflow-y-auto rounded-lg border border-line p-1" data-testid="subtitle-fonts">
+            {FONT_IDS.map((id) => {
+              const f = FONTS[id];
+              const on = shownFont === f.family;
+              return (
+                <button
+                  key={id}
+                  className={`overflow-hidden whitespace-nowrap rounded-md px-2 py-0.5 text-left text-[15px] leading-[2] transition-colors ${
+                    on ? 'bg-brand-100 text-brand-700 ring-1 ring-brand-300' : 'text-ink hover:bg-gray-50'
+                  }`}
+                  style={{ fontFamily: `"${subtitleCssFamily(f.family)}"`, fontWeight: f.bold ? 700 : 400 }}
+                  onClick={() => setStyle({ fontId: id })}
+                  aria-pressed={on}
+                  title={f.label}
+                  data-testid={`subtitle-font-${id}`}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <ColorRow
+          label="글자 색"
+          value={resolved.preset.color}
+          custom={!!shown.color}
+          editLabel={target === 'all' ? '자막 글자 색 바꾸기' : '이 자막 글자 색 바꾸기'}
+          apply={(p, color) => ops.setSubtitleStyle(p, target, { color })}
+          testId="subtitle-color"
+        />
+        <ColorRow
+          label={isBox ? '상자 색' : '테두리 색'}
+          value={(isBox ? resolved.preset.boxColor : resolved.preset.outlineColor) ?? '#000000'}
+          custom={!!shown.outlineColor}
+          editLabel={target === 'all' ? '자막 테두리 색 바꾸기' : '이 자막 테두리 색 바꾸기'}
+          apply={(p, outlineColor) => ops.setSubtitleStyle(p, target, { outlineColor })}
+          testId="subtitle-outline-color"
+        />
         {/* 크기: "가" 글자 크기로 단계를 보여 준다 */}
         <div className="flex items-center gap-2">
           <span className="w-14 shrink-0 text-xs text-gray-500">글자 크기</span>
@@ -318,6 +365,76 @@ function Choice<T extends string>(props: {
             {o.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** 색 고르기: 자주 쓰는 색 + [직접 고르기] (끄는 동안 바로 반영, 다 고르면 되돌리기 1단계) + 모양대로 */
+function ColorRow(props: {
+  label: string;
+  value: string;
+  custom: boolean;
+  editLabel: string;
+  apply: (p: Project, color: string | null) => void;
+  testId: string;
+}): JSX.Element {
+  const live = useRef<ReturnType<typeof liveEdit> | null>(null);
+  const finish = (): void => {
+    live.current?.end();
+    live.current = null;
+  };
+  const cur = props.value.toUpperCase();
+  return (
+    <div className="flex flex-col gap-1.5" data-testid={props.testId}>
+      <span className="flex items-center justify-between text-xs text-gray-500">
+        {props.label}
+        {props.custom && (
+          <button className="text-brand-600 hover:underline" onClick={() => edit(props.editLabel, (p) => props.apply(p, null))} data-testid={`${props.testId}-reset`}>
+            모양대로
+          </button>
+        )}
+      </span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {COLOR_SWATCHES.map((c) => (
+          <button
+            key={c}
+            className={`h-6 w-6 rounded-full border transition-transform hover:scale-110 ${
+              cur === c ? 'border-brand-500 ring-2 ring-brand-300 ring-offset-1' : 'border-line'
+            }`}
+            style={{ background: c }}
+            onClick={() => edit(props.editLabel, (p) => props.apply(p, c))}
+            aria-label={c}
+            aria-pressed={cur === c}
+            data-testid={`${props.testId}-${c.slice(1)}`}
+          />
+        ))}
+        <label
+          className="relative flex h-6 cursor-pointer items-center gap-1 rounded-full border border-line bg-white pl-0.5 pr-2 text-xs text-gray-600 hover:bg-gray-50"
+          title="직접 고르기"
+        >
+          <span className="h-5 w-5 rounded-full border border-line" style={{ background: cur }} />
+          직접
+          <input
+            type="color"
+            className="absolute inset-0 cursor-pointer opacity-0"
+            value={cur.toLowerCase()}
+            onChange={(e) => {
+              const v = e.target.value;
+              live.current ??= liveEdit(props.editLabel);
+              live.current.update((p) => props.apply(p as Project, v));
+            }}
+            onBlur={finish}
+            ref={(el) => {
+              // 색 고르기 창을 닫으면(change) 되돌리기 1단계로 마무리
+              if (el && !el.dataset.bound) {
+                el.dataset.bound = '1';
+                el.addEventListener('change', finish);
+              }
+            }}
+            data-testid={`${props.testId}-custom`}
+          />
+        </label>
       </div>
     </div>
   );

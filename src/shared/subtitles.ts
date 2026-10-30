@@ -17,11 +17,45 @@ export interface FontDef {
   ratio: number;
 }
 
-export const FONTS: Record<'sans' | 'pen' | 'title', FontDef> = {
-  sans: { family: 'Pretendard', file: 'Pretendard-Bold.otf', bold: true, ratio: 2048 / (1949 + 494) },
-  pen: { family: 'Nanum Pen', file: 'NanumPenScript-Regular.ttf', bold: false, ratio: 1000 / (809 + 202) },
-  title: { family: 'Black Han Sans', file: 'BlackHanSans-Regular.ttf', bold: false, ratio: 1000 / (810 + 210) }
-};
+/** 글꼴 정의: family 는 글꼴 파일 name 표(ID 1, 영문), ratio = unitsPerEm / (OS/2 winAscent + winDescent) */
+const font = (label: string, family: string, file: string, bold: boolean, upm: number, winA: number, winD: number): FontDef & { label: string } => ({
+  label,
+  family,
+  file,
+  bold,
+  ratio: upm / (winA + winD)
+});
+
+// 모두 SIL OFL 1.1 (상업 이용·동봉 가능), scripts/fetch-fonts.mjs 로 받음. 2026-10-30 18개 추가 → PRD 13장 #14
+export const FONTS = {
+  sans: font('프리텐다드', 'Pretendard', 'Pretendard-Bold.otf', true, 2048, 1949, 494),
+  pen: font('나눔손글씨 펜', 'Nanum Pen', 'NanumPenScript-Regular.ttf', false, 1000, 809, 202),
+  title: font('검은고딕', 'Black Han Sans', 'BlackHanSans-Regular.ttf', false, 1000, 810, 210),
+  gothic: font('나눔고딕', 'NanumGothicExtraBold', 'NanumGothic-ExtraBold.ttf', true, 1000, 885, 198),
+  dohyeon: font('도현', 'Do Hyeon', 'DoHyeon-Regular.ttf', false, 1000, 800, 200),
+  jua: font('주아', 'Jua', 'Jua-Regular.ttf', false, 1000, 874, 239),
+  dodum: font('고운돋움', 'Gowun Dodum', 'GowunDodum-Regular.ttf', false, 1000, 1160, 288),
+  sunflower: font('해바라기', 'Sunflower', 'Sunflower-Bold.ttf', true, 1000, 810, 235),
+  gugi: font('구기', 'Gugi', 'Gugi-Regular.ttf', false, 1000, 869, 169),
+  myeongjo: font('나눔명조', 'NanumMyeongjoExtraBold', 'NanumMyeongjo-ExtraBold.ttf', true, 1024, 932, 247),
+  batang: font('고운바탕', 'Gowun Batang', 'GowunBatang-Bold.ttf', true, 1000, 1160, 288),
+  songmyung: font('송명', 'Song Myung', 'SongMyung-Regular.ttf', false, 1000, 848, 235),
+  yeonsung: font('연성', 'Yeon Sung', 'YeonSung-Regular.ttf', false, 1000, 830, 323),
+  gaegu: font('개구쟁이', 'Gaegu', 'Gaegu-Bold.ttf', true, 1000, 762, 242),
+  gamja: font('감자꽃', 'Gamja Flower', 'GamjaFlower-Regular.ttf', false, 1024, 800, 258),
+  poorstory: font('서툰이야기', 'Poor Story', 'PoorStory-Regular.ttf', false, 1024, 819, 205),
+  singleday: font('싱글데이', 'Single Day', 'SingleDay-Regular.ttf', false, 1024, 779, 245),
+  cute: font('귀여운 글꼴', 'Cute Font', 'CuteFont-Regular.ttf', false, 1000, 708, 290),
+  dongle: font('동글', 'Dongle', 'Dongle-Bold.ttf', true, 1000, 850, 598),
+  dokdo: font('독도', 'Dokdo', 'Dokdo-Regular.ttf', false, 1000, 696, 394),
+  eastsea: font('동해 독도', 'East Sea Dokdo', 'EastSeaDokdo-Regular.ttf', false, 1000, 707, 297)
+} satisfies Record<string, FontDef & { label: string }>;
+
+export type FontId = keyof typeof FONTS;
+export const FONT_IDS = Object.keys(FONTS) as FontId[];
+
+/** 자막 색 고르기의 기본 색 */
+export const COLOR_SWATCHES = ['#FFFFFF', '#1A1A1A', '#FFE14D', '#FF8A3D', '#FF4F8B', '#B48CFF', '#5AB8FF', '#3DDC97', '#E45757'];
 
 export interface PresetDef {
   id: SubtitleStyleId;
@@ -97,12 +131,28 @@ export interface ResolvedStyle {
   position: SubtitleStyle['position'];
   /** 직접 옮긴 자리 (1080p 픽셀, 자막 덩어리 가운데). 없으면 position */
   pos?: { x: number; y: number };
+  /** 직접 고른 글꼴·색이 있으면 그 조합 (ASS Style 이름 구분용) */
+  custom?: string;
 }
 
 const clampRange = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+
 export function resolveStyle(st: SubtitleStyle): ResolvedStyle {
-  const preset = PRESET_BY_ID[st.presetId] ?? PRESET_BY_ID.basic;
+  const base = PRESET_BY_ID[st.presetId] ?? PRESET_BY_ID.basic;
+  // 직접 고른 글꼴·색이 있으면 모양 위에 덮는다 (상자 모양이면 테두리 색 = 상자 색)
+  const fontId = st.fontId && st.fontId in FONTS ? (st.fontId as FontId) : null;
+  const color = st.color && HEX.test(st.color) ? st.color.toUpperCase() : null;
+  const line = st.outlineColor && HEX.test(st.outlineColor) ? st.outlineColor.toUpperCase() : null;
+  const isBox = base.boxAlpha !== undefined;
+  const preset: PresetDef = {
+    ...base,
+    ...(fontId ? { font: FONTS[fontId] } : {}),
+    ...(color ? { color } : {}),
+    ...(line ? (isBox ? { boxColor: line } : { outlineColor: line }) : {})
+  };
+  const custom = fontId || color || line ? [fontId ?? '-', color?.slice(1) ?? '-', line?.slice(1) ?? '-'].join('_') : undefined;
   const scale = clampRange(st.sizeScale ?? 1, SIZE_SCALE.min, SIZE_SCALE.max);
   const size = Math.round((SIZE_PX[st.size] ?? SIZE_PX.M) * preset.scale * scale);
   const free = typeof st.x === 'number' && typeof st.y === 'number';
@@ -113,7 +163,7 @@ export function resolveStyle(st: SubtitleStyle): ResolvedStyle {
         y: Math.round(clampRange(st.y!, m, 1 - m) * PLAY_RES.height)
       }
     : undefined;
-  return { preset, size, position: st.position, ...(pos ? { pos } : {}) };
+  return { preset, size, position: st.position, ...(pos ? { pos } : {}), ...(custom ? { custom } : {}) };
 }
 
 /**
@@ -238,7 +288,7 @@ export function buildAss(layout: TimelineLayout, subs: Subtitle[], def: Subtitle
   const events: string[] = [];
   for (const { sub, start, end } of items) {
     const r = resolveStyle(effectiveStyle(def, sub));
-    const name = `${r.preset.id}_${r.size}_${r.position}`;
+    const name = `${r.preset.id}_${r.size}_${r.position}${r.custom ? `_${r.custom}` : ''}`;
     styles.set(name, r);
     const text = wrapSubtitle(sub.text).map(escapeAssText).join('\\N');
     // 직접 옮긴 자막: 덩어리 가운데를 그 점에 (미리보기도 가운데 기준)
@@ -287,6 +337,13 @@ export function buildAss(layout: TimelineLayout, subs: Subtitle[], def: Subtitle
     ...events,
     ''
   ].join('\n');
+}
+
+/** 영상에 보이는 자막이 쓰는 글꼴 파일 (렌더 때 이것만 작업 폴더로 복사) */
+export function usedFontFiles(layout: TimelineLayout, subs: Subtitle[], def: SubtitleStyle): string[] {
+  const files = new Set<string>();
+  for (const { sub } of visibleSubtitles(layout, subs)) files.add(resolveStyle(effectiveStyle(def, sub)).preset.font.file);
+  return [...files];
 }
 
 // --- SRT (유튜브 자막 올리기용) ---

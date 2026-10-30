@@ -4,6 +4,14 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/** Google Fonts 저장소의 OFL 글꼴 */
+const gf = (dir, name) => ({
+  file: `${name}.ttf`,
+  url: `https://raw.githubusercontent.com/google/fonts/main/ofl/${dir}/${name}.ttf`,
+  license: `${name.split('-')[0]}-OFL.txt`,
+  licenseUrl: `https://raw.githubusercontent.com/google/fonts/main/ofl/${dir}/OFL.txt`
+});
+
 const FONTS = [
   {
     file: 'Pretendard-Bold.otf',
@@ -22,7 +30,26 @@ const FONTS = [
     url: 'https://raw.githubusercontent.com/google/fonts/main/ofl/blackhansans/BlackHanSans-Regular.ttf',
     license: 'BlackHanSans-OFL.txt',
     licenseUrl: 'https://raw.githubusercontent.com/google/fonts/main/ofl/blackhansans/OFL.txt'
-  }
+  },
+  // 2026-10-30 추가 (PRD 13장 #14)
+  gf('dohyeon', 'DoHyeon-Regular'),
+  gf('jua', 'Jua-Regular'),
+  gf('gowundodum', 'GowunDodum-Regular'),
+  gf('gowunbatang', 'GowunBatang-Bold'),
+  gf('nanummyeongjo', 'NanumMyeongjo-ExtraBold'),
+  gf('nanumgothic', 'NanumGothic-ExtraBold'),
+  gf('gaegu', 'Gaegu-Bold'),
+  gf('dongle', 'Dongle-Bold'),
+  gf('sunflower', 'Sunflower-Bold'),
+  gf('yeonsung', 'YeonSung-Regular'),
+  gf('singleday', 'SingleDay-Regular'),
+  gf('dokdo', 'Dokdo-Regular'),
+  gf('cutefont', 'CuteFont-Regular'),
+  gf('eastseadokdo', 'EastSeaDokdo-Regular'),
+  gf('songmyung', 'SongMyung-Regular'),
+  gf('poorstory', 'PoorStory-Regular'),
+  gf('gugi', 'Gugi-Regular'),
+  gf('gamjaflower', 'GamjaFlower-Regular')
 ];
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'resources', 'fonts');

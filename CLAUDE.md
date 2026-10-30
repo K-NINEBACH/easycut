@@ -81,6 +81,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
   - `x-stress.mjs [장면 수=40]` 대량 장면 + 화면 프레임 간격·영상 만들기(16개 묶음)
   - `x-packaged.mjs` 배포판(dist/win-unpacked)에서 동봉 ffmpeg·글꼴·whisper 확인
     (먼저 `npx electron-vite build && npx electron-builder --win --dir`)
+  - `x-fonts.mjs` 자막 글꼴 21개 × 직접 고른 색: 미리보기 ≈ 결과
   - `x-update.mjs` 실제 설치 → 자동 업데이트 (아래 "## 배포·자동 업데이트")
 
 ## 진행 상황
@@ -113,6 +114,9 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
         2026-10-30 (PRD 13장 #12·#13): 모양 13개(상자 색 `boxColor`), 크기 5단계 + `sizeScale`,
         미리보기에서 끌어 옮기기 `x·y` → ASS `{\an5\pos(x,y)}` / 미리보기 translate(-50%,-50%). 끌기는 `SubtitleOverlay` 의 startDrag
         (liveEdit 로 되돌리기 1단계). "이 자막만" 의 위치 되돌리기는 override 에 x·y = null
+        글꼴 21개 `FONTS` (family = 글꼴 name 표 ID 1 영문, ratio = upm/(winAscent+winDescent) — 새 글꼴은
+        scripts/fetch-fonts.mjs 에 넣고 같은 값을 읽어 넣는다), 직접 고른 `fontId`·`color`·`outlineColor` 는 모양 위에 덮음.
+        x-fonts E2E 가 글꼴마다 미리보기↔결과 글자 영역 비교 (현재 1.4% 이하)
   - [x] M9b 말소리 자동 생성 — `services/SubtitleService.ts`: 대상 장면 소리를 타임라인 순서로 16kHz WAV 하나로 →
         whisper-cli(-l ko -oj -pp) → `subtitles.segmentsToSubtitles` (시작 장면에 붙이고 두 줄씩 나눔).
         whisper.cpp v1.9.5(b5454) CPU 빌드. 17초 샘플 small 모델로 약 6초

@@ -404,21 +404,25 @@ export function mergeWithNextSubtitle(p: Project, id: string): boolean {
 export function setSubtitleStyle(p: Project, target: 'all' | string, style: Partial<SubtitleStyle>): void {
   const st = { ...style };
   if (st.presetId && st.position === undefined) st.position = PRESET_BY_ID[st.presetId]?.defaultPosition ?? 'bottom';
+  const clear: (keyof SubtitleStyle)[] = [];
   // 위·가운데·아래를 직접 고르면 끌어서 옮긴 자리는 지운다 (모양만 바꾸면 자리는 그대로)
-  const clearFree = style.position !== undefined && style.x === undefined;
+  if (style.position !== undefined && style.x === undefined) clear.push('x', 'y');
+  // 모양 카드를 고르면 직접 고른 글꼴·색은 지운다 (카드에 보이는 모양 그대로)
+  if (style.presetId !== undefined) for (const k of ['fontId', 'color', 'outlineColor'] as const) if (!(k in style)) clear.push(k);
   if (target === 'all') {
     Object.assign(p.defaultSubtitleStyle, st);
-    if (clearFree) {
-      delete p.defaultSubtitleStyle.x;
-      delete p.defaultSubtitleStyle.y;
-    }
+    for (const k of clear) delete p.defaultSubtitleStyle[k];
     return;
   }
   const s = p.subtitles.find((x) => x.id === target);
   if (!s) return;
   s.styleOverride = { ...(s.styleOverride ?? {}), ...st };
-  // 이 자막만: 전체 자막의 옮긴 자리를 덮어야 하므로 지우지 않고 null
-  if (clearFree) Object.assign(s.styleOverride, { x: null, y: null });
+  // 이 자막만: 전체 자막에 값이 있으면 그것을 덮어야 하므로 null, 없으면 그냥 지운다
+  const o = s.styleOverride as Record<string, unknown>;
+  for (const k of clear) {
+    if (p.defaultSubtitleStyle[k] != null) o[k] = null;
+    else delete o[k];
+  }
 }
 
 /** 말소리로 만든 자막 넣기 (PRD 4-2): 대상 장면에 붙어 있던 자막은 지우고 새로 넣는다 */

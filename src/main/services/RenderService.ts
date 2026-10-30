@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { copyFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
-import { buildAss, buildSrt, FONTS, visibleSubtitles } from '@shared/subtitles';
+import { buildAss, buildSrt, usedFontFiles, visibleSubtitles } from '@shared/subtitles';
 import type { MediaItem, RenderOptions } from '@shared/types';
 import { bakeLut, isIdentityLook, lookOf, lutToCube } from '@shared/filters';
 import { clipFrameCounts, layoutTimeline, transitionFrameOverlaps } from '@shared/timeline';
@@ -159,7 +159,9 @@ export class RenderService {
       let burn: { assFile: string; fontsDir: string } | undefined;
       if (hasSubs && opts.subtitleMode !== 'srt') {
         await mkdir(join(work, 'fonts'), { recursive: true });
-        for (const font of Object.values(FONTS)) await copyFile(join(this.fontsDir, font.file), join(work, 'fonts', font.file));
+        // 쓰는 글꼴만 (글꼴이 많아 전부 복사하면 60MB 넘음)
+        for (const file of usedFontFiles(layout, project.subtitles, project.defaultSubtitleStyle))
+          await copyFile(join(this.fontsDir, file), join(work, 'fonts', file));
         await writeFile(join(work, 'subs.ass'), buildAss(layout, project.subtitles, project.defaultSubtitleStyle));
         burn = { assFile: 'subs.ass', fontsDir: 'fonts' };
       }

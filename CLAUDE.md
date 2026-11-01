@@ -53,6 +53,12 @@ npm run dist:win         # NSIS 설치 파일 dist/EasyCut-Setup-버전.exe (Win
   과 옛 blockmap. 업데이트 임시 폴더 `%LOCALAPPDATA%\easycut-updater` 를 비우고 시작한다.
   시험용 새 버전은 `npx electron-builder --win --publish never '--config.directories.output=dist-test'` (version 만 잠깐 올려서)
 
+## 흔들림 줄이기·영역 고정 (PRD 13장 #16)
+- 계산은 `src/shared/stabilize.ts` 한 곳. 결과는 장면의 `stabilize` (창 가운데 경로, 초당 30개, 원본 시간 기준) 하나로,
+  미리보기는 셰이더 `uCropA/B`, 렌더는 장면 처리 첫머리의 `sendcmd` + `crop` 이 같은 `stabilizeWindow` 를 쓴다.
+- 분석은 `services/StabilizeService.ts`: 프록시를 회색 640px 프레임으로 60장씩 읽음 (영역 고정은 고른 프레임에서 앞뒤로).
+- 진행 창 `Panel/StabilizeDialog.tsx`, 영역 고르기 `Preview/RegionPicker.tsx`. 고르는 동안 그 장면은 보정 없이 보임.
+
 ## 디자인
 - 색·모서리·그림자 토큰과 공통 부품 클래스(`ez-panel`, `ez-btn-primary/secondary/soft`, `ez-icon-btn`, `ez-seg`, `ez-input`)는
   `src/renderer/index.css` 한 곳. 회색 단계(gray-50~900)도 시안 색으로 덮어써 있음. 아이콘은 lucide-react.
@@ -83,6 +89,7 @@ npx electron-vite build && node tests/e2e/m2-timeline.mjs   # E2E (Playwright, �
     (먼저 `npx electron-vite build && npx electron-builder --win --dir`)
   - `x-fonts.mjs` 자막 글꼴 21개 × 직접 고른 색: 미리보기 ≈ 결과
   - `x-update.mjs` 실제 설치 → 자동 업데이트 (아래 "## 배포·자동 업데이트")
+  - `x-stabilize.mjs` 합성 영상으로 영역 고정·흔들림 줄이기·미리보기 ≈ 결과, 타임라인 휠
 
 ## 진행 상황
 - [x] M0 프로젝트 셋업

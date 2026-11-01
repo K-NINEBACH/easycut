@@ -134,9 +134,11 @@ export function buildClipCommand(
     imagePath?: string;
     /** 필터 LUT(.cube) 파일 이름. 경로 이스케이프를 피하려고 작업 폴더(cwd) 기준 이름만 받는다 */
     lutFile?: string;
+    /** 흔들림 줄이기·영역 고정: sendcmd 파일 이름 (작업 폴더 기준, stabilize.stabilizeCommands) */
+    stabFile?: string;
   } = {}
 ): string[] {
-  const { imagePath, lutFile } = extra;
+  const { imagePath, lutFile, stabFile } = extra;
   const { width: w, height: h, fps } = fmt;
   const seconds = frames / fps;
   const samples = Math.round(seconds * AUDIO_RATE);
@@ -156,6 +158,11 @@ export function buildClipCommand(
   // 화면을 덮을 만큼만 남기고 크기를 줄인 뒤(4K 원본이면 1/4) 무거운 HDR 변환·화면 맞춤·필터를 한다
   const pre: string[] = [image ? 'setpts=PTS-STARTPTS' : `setpts=(PTS-STARTPTS)/${clip.speed}`];
   if (!image) pre.push(`fps=${fps}`);
+  // 원본 화질에서 자른다. 위치는 프레임마다 sendcmd 가 바꾼다
+  if (stabFile && clip.stabilize) {
+    const z = clip.stabilize.zoom;
+    pre.push(`sendcmd=f=${stabFile}`, `crop=w=trunc(iw/${z}/2)*2:h=trunc(ih/${z}/2)*2:x=0:y=0:exact=1`);
+  }
   pre.push(`scale=w='trunc(iw*min(1,max(${w}/iw,${h}/ih))/2)*2':h=-2`);
   if (media.isHdr && !image) pre.push(HDR_TO_SDR);
   const video =
@@ -349,6 +356,22 @@ export function buildFinalCommand(
     '-f', 'mp4', output
   );
   return args;
+}
+
+// ---------------------------------------------------------------------------
+// 흔들림 줄이기·영역 고정 분석 (PRD 13장 #16)
+
+/** frame 번째 프레임부터 count 장을 회색 원시 프레임으로 stdout 에. 프록시는 고정 fps 라 프레임 번호 = 시간 */
+export function buildAnalyzeFramesCommand(input: string, frame: number, fps: number, count: number, w: number, h: number): string[] {
+  return [
+    '-hide_banner', '-nostdin', '-v', 'error',
+    '-ss', ((frame - 0.25) / fps > 0 ? (frame - 0.25) / fps : 0).toFixed(6),
+    '-i', input,
+    '-map', '0:v:0', '-an',
+    '-vf', `scale=${w}:${h},format=gray`,
+    '-frames:v', String(count),
+    '-f', 'rawvideo', 'pipe:1'
+  ];
 }
 
 // ---------------------------------------------------------------------------

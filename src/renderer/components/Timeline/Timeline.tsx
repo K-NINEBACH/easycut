@@ -29,12 +29,18 @@ export default function Timeline(): JSX.Element {
   const contentSec = Math.max(layout.total, musicEnd, 10);
   const contentWidth = contentSec * pps + 300;
 
-  // Ctrl+휠: 마우스 위치를 기준으로 확대/축소 (PRD F2)
+  // 휠: 좌우 이동 (PRD 13장 #15), Ctrl+휠: 마우스 위치를 기준으로 확대/축소 (PRD F2)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent): void => {
-      if (!e.ctrlKey) return;
+      if (!e.ctrlKey) {
+        // 터치패드의 가로 쓸기는 브라우저 기본 동작 그대로 둔다
+        if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+        return;
+      }
       e.preventDefault();
       const { pxPerSec, setPxPerSec } = useUiStore.getState();
       const rect = el.getBoundingClientRect();

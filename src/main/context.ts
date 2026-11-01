@@ -8,6 +8,7 @@ import { MediaService } from './services/MediaService';
 import { ProjectService } from './services/ProjectService';
 import { RenderService } from './services/RenderService';
 import { SubtitleService } from './services/SubtitleService';
+import { StabilizeService } from './services/StabilizeService';
 import { SettingsService } from './services/SettingsService';
 import type { JobEvents } from './services/JobQueue';
 
@@ -17,6 +18,7 @@ export interface AppContext {
   media: MediaService;
   render: RenderService;
   subtitles: SubtitleService;
+  stabilize: StabilizeService;
   settings: SettingsService;
   jobEvents: JobEvents;
   allowedFiles: Set<string>;
@@ -61,7 +63,8 @@ export function createContext(): AppContext {
     () => projects.cacheDir,
     jobEvents
   );
+  const stabilize = new StabilizeService(tools.ffmpeg, jobEvents);
   if (!existsSync(resourcesDir)) console.warn(`[easycut] resources 폴더가 없어요: ${resourcesDir}`);
   const settings = new SettingsService(app.getPath('userData'));
-  return { projects, media, render, subtitles, settings, jobEvents, allowedFiles, resourcesDir, tools };
+  return { projects, media, render, subtitles, stabilize, settings, jobEvents, allowedFiles, resourcesDir, tools };
 }

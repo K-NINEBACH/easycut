@@ -7,7 +7,8 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { buildAss, buildSrt, usedFontFiles, visibleSubtitles } from '@shared/subtitles';
 import type { MediaItem, RenderOptions } from '@shared/types';
 import { bakeLut, isIdentityLook, lookOf, lutToCube } from '@shared/filters';
-import { clipFrameCounts, layoutTimeline, transitionFrameOverlaps } from '@shared/timeline';
+import { stabilizeCommands } from '@shared/stabilize';
+import { clipFrameCounts, frameSourceTime, layoutTimeline, transitionFrameOverlaps } from '@shared/timeline';
 import { TRANSITION_BY_ID } from '@shared/transitions';
 import { weightedProgress } from '../ffmpeg/progress';
 import { runFfmpeg } from '../ffmpeg/run';
@@ -129,7 +130,15 @@ export class RenderService {
           lutFile = `lut_${String(i).padStart(4, '0')}.cube`;
           await writeFile(join(work, lutFile), lutToCube(bakeLut(lookOf(clip))));
         }
-        await runFfmpeg(this.tools.ffmpeg, buildClipCommand(clip, media, fmt, frames[i], out, { imagePath, lutFile }), {
+        let stabFile: string | undefined;
+        if (clip.stabilize) {
+          stabFile = `stab_${String(i).padStart(4, '0')}.txt`;
+          await writeFile(
+            join(work, stabFile),
+            stabilizeCommands(clip.stabilize, frames[i], fmt.fps, (k) => frameSourceTime(clip, k, fmt.fps))
+          );
+        }
+        await runFfmpeg(this.tools.ffmpeg, buildClipCommand(clip, media, fmt, frames[i], out, { imagePath, lutFile, stabFile }), {
           cwd: work,
           signal: ctx.signal,
           logPath,

@@ -116,6 +116,11 @@ export function sourceTime(clip: VideoClip, layout: ClipLayout, t: number): numb
   return clip.inPoint + local * clip.speed;
 }
 
+/** 렌더: 장면의 k 번째 출력 프레임이 보여 주는 원본 시간 */
+export function frameSourceTime(clip: VideoClip, k: number, fps: number): number {
+  return clip.inPoint + (k / fps) * clip.speed;
+}
+
 export interface SubtitleRange {
   start: number;
   end: number;

@@ -7,6 +7,7 @@ import { PreviewEngine, type PreviewStatus } from './engine';
 import { player } from './player';
 import { lutForClip } from './luts';
 import SubtitleOverlay from './SubtitleOverlay';
+import RegionPicker from './RegionPicker';
 
 export let previewEngine: PreviewEngine | null = null;
 
@@ -64,6 +65,7 @@ export default function PreviewArea(): JSX.Element {
           <canvas ref={canvasRef} className="h-full w-full" data-testid="preview-canvas" />
           <div ref={hostRef} />
           <SubtitleOverlay />
+          <RegionPicker />
           {glError ? (
             <Overlay>미리보기를 표시할 수 없어요 (그래픽 기능 오류)</Overlay>
           ) : status === 'empty' ? (

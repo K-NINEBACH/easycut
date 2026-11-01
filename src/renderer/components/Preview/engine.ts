@@ -1,6 +1,7 @@
 // 미리보기 엔진 (PRD F8): 프록시를 <video> 2개(현재 클립 / 다음 클립 미리 로딩)로 재생하고
 // 그 프레임을 WebGL 캔버스에 그린다. 클립 i 는 항상 슬롯 i % 2 를 쓴다.
 import { clipIndexAt, layoutTimeline, sourceTime, transitionAt, type TimelineLayout } from '@shared/timeline';
+import { STAB_FPS, stabilizeWindow } from '@shared/stabilize';
 import { TRANSITION_BY_ID } from '@shared/transitions';
 import { mediaUrl } from '@shared/mediaUrl';
 import type { MediaItem, Project, VideoClip } from '@shared/types';
@@ -254,7 +255,11 @@ export class PreviewEngine {
         sources.push(null);
         return;
       }
-      sources.push({ width: v.videoWidth, height: v.videoHeight, fit: FIT_INDEX[clip.fitMode], lut: !!lut });
+      // 영역을 고르는 동안에는 원본 화면을 그대로 보여 준다
+      const stab = clip.stabilize && ui.pickRegion !== clip.id ? clip.stabilize : null;
+      // 올라간 프레임 번호로 맞춘다 (프록시는 초당 30장): 시간이 어긋나면 고정한 대상이 미리보기에서만 떨린다
+      const crop = stab ? stabilizeWindow(stab, Math.floor(slot.uploadedTime * STAB_FPS + 1e-3) / STAB_FPS) : undefined;
+      sources.push({ width: v.videoWidth, height: v.videoHeight, fit: FIT_INDEX[clip.fitMode], lut: !!lut, crop });
     });
 
     // 다음 클립을 다른 슬롯에 미리 로딩 (경계에서 멈춤 없이)

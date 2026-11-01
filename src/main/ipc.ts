@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
-import { IpcChannel, type AppInfo } from '@shared/ipc';
+import { IpcChannel, type AppInfo, type StabilizeRequest } from '@shared/ipc';
 import type { MediaItem, Project, RenderOptions } from '@shared/types';
 import type { GenerateArgs } from './services/SubtitleService';
 import type { Settings } from './services/SettingsService';
@@ -146,6 +146,9 @@ export function registerIpc(ctx: AppContext): void {
   // --- 말소리로 자막 만들기 (PRD 4-2) ---
   ipcMain.handle(IpcChannel.SubtitleGenerate, (_e, args: GenerateArgs) => ({ jobId: ctx.subtitles.generate(args) }));
 
+  // --- 흔들림 줄이기·영역 고정 (PRD 13장 #16) ---
+  ipcMain.handle(IpcChannel.StabilizeAnalyze, (_e, req: StabilizeRequest) => ({ jobId: ctx.stabilize.analyze(req) }));
+
   // --- 자막 파일 저장 (PRD F4, 유튜브 자막 올리기용) ---
   ipcMain.handle(IpcChannel.SubtitleSaveSrt, async (_e, name: string, content: string) => {
     const win = focusedWindow();
@@ -162,7 +165,7 @@ export function registerIpc(ctx: AppContext): void {
 
   // --- 작업 ---
   ipcMain.handle(IpcChannel.JobsCancel, (_e, jobId: string) => {
-    if (!ctx.render.cancel(jobId) && !ctx.subtitles.cancel(jobId)) media.cancel(jobId);
+    if (!ctx.render.cancel(jobId) && !ctx.subtitles.cancel(jobId) && !ctx.stabilize.cancel(jobId)) media.cancel(jobId);
   });
 
   // --- 셸 ---

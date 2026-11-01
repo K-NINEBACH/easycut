@@ -91,6 +91,8 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
         </Field>
       )}
 
+      {!image && media && <StabilizeField clip={clip} media={media} />}
+
       {media?.width && media.height && Math.abs(media.width / media.height - 16 / 9) > 0.02 && (
         <Field label="화면 채우기">
           <div className="flex gap-1">
@@ -148,6 +150,86 @@ function ClipTrim({ clip, media }: { clip: VideoClip; media?: MediaItem }): JSX.
           <p className="text-xs text-gray-400">이 영상에는 소리가 없어요</p>
         ))}
     </div>
+  );
+}
+
+/** 흔들림 줄이기·영역 고정 (PRD 13장 #16) */
+function StabilizeField({ clip, media }: { clip: VideoClip; media: MediaItem }): JSX.Element {
+  const layout = useTimelineLayout();
+  const setJob = useUiStore((s) => s.setStabilizeJob);
+  const st = clip.stabilize;
+  const ready = media.proxyStatus === 'ready' && !media.missing;
+  const end = st ? st.from + (st.path.length / 2 - 1) / st.fps : 0;
+  // 분석 뒤 앞뒤를 더 늘렸으면 늘린 곳에는 효과가 없다
+  const stale = !!st && (clip.inPoint < st.from - 0.1 || clip.outPoint > end + 0.2);
+
+  const pick = (): void => {
+    const ui = useUiStore.getState();
+    const cl = layout.byId.get(clip.id);
+    if (!cl) return;
+    player.pause();
+    // 재생 위치가 이 장면 밖이면 장면 안으로 (전환으로 겹치는 곳도 피한다)
+    const from = cl.start + cl.overlapIn;
+    const to = Math.max(from, cl.end - cl.overlapOut - 0.05);
+    if (ui.playhead < from || ui.playhead > to) player.seek(from);
+    ui.setPickRegion(clip.id);
+  };
+
+  const btn = (on: boolean): string =>
+    `flex-1 rounded-lg border py-1.5 transition-colors disabled:opacity-40 ${
+      on ? 'border-brand-300 bg-brand-100 font-semibold text-brand-700' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
+    }`;
+
+  return (
+    <Field label="흔들림·화면 고정">
+      <div className="flex gap-1">
+        <button
+          className={btn(st?.mode === 'shake')}
+          disabled={!ready}
+          title="화면 전체의 떨림을 줄여요. 조금 확대돼요"
+          onClick={() => setJob({ clipId: clip.id, mode: 'shake' })}
+          data-testid="stab-shake"
+        >
+          흔들림 줄이기
+        </button>
+        <button
+          className={btn(st?.mode === 'lock')}
+          disabled={!ready}
+          title="고른 부분을 따라가며 화면 가운데에 고정해요. 대상이 많이 움직이면 많이 확대돼요"
+          onClick={pick}
+          data-testid="stab-lock"
+        >
+          영역 골라 고정
+        </button>
+      </div>
+      {!ready && <p className="text-xs text-gray-400">영상을 준비하면 쓸 수 있어요</p>}
+      {st && (
+        <>
+          <LiveSlider
+            label="확대"
+            value={Math.round(st.zoom * 100)}
+            min={100}
+            max={st.mode === 'lock' ? 250 : 150}
+            step={1}
+            format={(v) => `${v}%`}
+            editLabel="확대 바꾸기"
+            apply={(p, v) => ops.setStabilizeZoom(p, clip.id, v / 100)}
+            testId="stab-zoom"
+          />
+          {stale && <p className="text-xs text-amber-600">장면 길이를 늘렸어요. 버튼을 다시 누르면 늘린 곳까지 적용돼요</p>}
+          {(st.lost ?? 0) > 0.05 && (
+            <p className="text-xs text-amber-600">대상을 놓친 구간이 {Math.round(st.lost! * 100)}% 있어요. 더 뚜렷한 곳을 골라 보세요</p>
+          )}
+          <button
+            className="ez-btn-secondary py-1.5 text-xs"
+            onClick={() => edit('흔들림·화면 고정 끄기', (p) => ops.setStabilize(p, clip.id, null))}
+            data-testid="stab-off"
+          >
+            끄기
+          </button>
+        </>
+      )}
+    </Field>
   );
 }
 

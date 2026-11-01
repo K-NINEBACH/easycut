@@ -28,7 +28,9 @@ uniform vec2 uSizeA;
 uniform vec2 uSizeB;
 uniform int uFitA;
 uniform int uFitB;
-uniform vec2 uOut;     // 출력 논리 크기 (1920x1080)
+uniform vec3 uCropA;
+uniform vec3 uCropB;
+uniform vec2 uOut;    // 출력 논리 크기 (1920x1080)
 uniform int uTrans;    // transitions.ts 의 shader 번호
 uniform float uProg;   // xfade progress: 1(시작) → 0(끝)
 uniform float uLutSize;
@@ -54,7 +56,8 @@ vec3 blurSample(sampler2D tex, vec2 uv, vec2 size, float scale) {
 }
 
 // fit: 0 = 흐린 배경, 1 = 검은 배경, 2 = 꽉 채우기
-vec3 fitSample(sampler2D tex, vec2 size, int fit, vec2 uv) {
+// crop: 흔들림 줄이기·영역 고정 창 (가운데 x,y, 크기). 렌더의 crop 필터처럼 원본을 먼저 자른 것과 같다
+vec3 fitSample(sampler2D tex, vec2 size, int fit, vec2 uv, vec3 crop) {
   vec2 p = uv * uOut;
   float sContain = min(uOut.x / size.x, uOut.y / size.y);
   float sCover = max(uOut.x / size.x, uOut.y / size.y);
@@ -63,11 +66,11 @@ vec3 fitSample(sampler2D tex, vec2 size, int fit, vec2 uv) {
   vec2 o = (uOut - d) * 0.5;
   vec2 suv = (p - o) / d;
   bool inside = all(greaterThanEqual(suv, vec2(0.0))) && all(lessThanEqual(suv, vec2(1.0)));
-  if (inside) return textureLod(tex, suv, 0.0).rgb;
+  if (inside) return textureLod(tex, crop.xy + (suv - 0.5) * crop.z, 0.0).rgb;
   if (fit == 1) return vec3(0.0);
   vec2 dc = size * sCover;
   vec2 oc = (uOut - dc) * 0.5;
-  return blurSample(tex, (p - oc) / dc, size, sCover);
+  return blurSample(tex, crop.xy + ((p - oc) / dc - 0.5) * crop.z, size, sCover / crop.z);
 }
 
 vec3 grade(vec3 c, sampler3D lut, bool on) {
@@ -78,11 +81,11 @@ vec3 grade(vec3 c, sampler3D lut, bool on) {
 
 vec3 srcA(vec2 uv) {
   if (!uHasA) return vec3(0.0);
-  return grade(fitSample(uTexA, uSizeA, uFitA, uv), uLutA, uLutOnA);
+  return grade(fitSample(uTexA, uSizeA, uFitA, uv, uCropA), uLutA, uLutOnA);
 }
 vec3 srcB(vec2 uv) {
   if (!uHasB) return vec3(0.0);
-  return grade(fitSample(uTexB, uSizeB, uFitB, uv), uLutB, uLutOnB);
+  return grade(fitSample(uTexB, uSizeB, uFitB, uv, uCropB), uLutB, uLutOnB);
 }
 
 void main() {

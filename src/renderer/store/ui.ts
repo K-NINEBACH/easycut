@@ -41,6 +41,10 @@ interface UiStore {
   helpOpen: 'shortcuts' | null;
   /** 첫 실행 안내 (PRD 5.4) */
   tourOpen: boolean;
+  /** 이 장면에서 고정할 영역을 고르는 중 (PRD 13장 #16) */
+  pickRegion: string | null;
+  /** 흔들림 줄이기·영역 고정 분석 요청. 진행 창이 처리한다 */
+  stabilizeJob: { clipId: string; mode: 'shake' | 'lock'; box?: { x: number; y: number; w: number; h: number }; refTime?: number } | null;
 
   select: (s: Selection) => void;
   setSelectedMedia: (ids: string[]) => void;
@@ -57,6 +61,8 @@ interface UiStore {
   setExportOpen: (o: boolean) => void;
   setHelpOpen: (h: 'shortcuts' | null) => void;
   setTourOpen: (o: boolean) => void;
+  setPickRegion: (id: string | null) => void;
+  setStabilizeJob: (j: UiStore['stabilizeJob']) => void;
 }
 
 export const MIN_PX_PER_SEC = 4;
@@ -79,6 +85,8 @@ export const useUiStore = create<UiStore>((set) => ({
   exportOpen: false,
   helpOpen: null,
   tourOpen: false,
+  pickRegion: null,
+  stabilizeJob: null,
 
   select: (selection) => set({ selection }),
   setSelectedMedia: (selectedMediaIds) => set({ selectedMediaIds }),
@@ -98,7 +106,9 @@ export const useUiStore = create<UiStore>((set) => ({
   setScrub: (scrub) => set({ scrub }),
   setExportOpen: (exportOpen) => set({ exportOpen }),
   setHelpOpen: (helpOpen) => set({ helpOpen }),
-  setTourOpen: (tourOpen) => set({ tourOpen })
+  setTourOpen: (tourOpen) => set({ tourOpen }),
+  setPickRegion: (pickRegion) => set({ pickRegion }),
+  setStabilizeJob: (stabilizeJob) => set({ stabilizeJob })
 }));
 
 export const toast = (text: string, tone?: Toast['tone']): void => useUiStore.getState().toast(text, tone);

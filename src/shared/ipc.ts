@@ -46,6 +46,7 @@ export const IpcChannel = {
   RenderLogPath: 'render:logPath',
   SubtitleSaveSrt: 'subtitle:saveSrt',
   SubtitleGenerate: 'subtitle:generate',
+  StabilizeAnalyze: 'stabilize:analyze',
   JobsCancel: 'jobs:cancel',
   JobsProgress: 'jobs:progress',
   JobsDone: 'jobs:done',
@@ -60,6 +61,17 @@ export interface ImportResult {
   failed: { path: string; fileName: string }[];
   /** 이미 불러온 파일이라 건너뛴 경로 */
   duplicates: string[];
+}
+
+/** 흔들림 줄이기·영역 고정 분석 요청 */
+export interface StabilizeRequest {
+  media: import('./types').MediaItem;
+  clip: import('./types').VideoClip;
+  mode: 'shake' | 'lock';
+  /** 영역 고정: 고른 영역 (원본 비율 0~1) */
+  box?: { x: number; y: number; w: number; h: number };
+  /** 영역 고정: 영역을 고른 프레임의 원본 시간 */
+  refTime?: number;
 }
 
 export interface WaveformData {

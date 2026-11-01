@@ -76,6 +76,23 @@ export interface VideoClip {
   filter: FilterId;
   filterStrength: number; // 0 ~ 1
   adjust: ColorAdjust;
+  /** 흔들림 줄이기·영역 고정 (PRD 13장 #16) */
+  stabilize?: Stabilize;
+}
+
+/** 프레임마다 잘라 낼 창의 경로. 계산은 stabilize.ts */
+export interface Stabilize {
+  mode: 'shake' | 'lock';
+  /** 첫 표본의 원본 시간 (초) */
+  from: number;
+  /** 초당 표본 수 */
+  fps: number;
+  /** 창 가운데 [x0,y0,x1,y1…] (원본 비율 0~1) */
+  path: number[];
+  /** 확대 배율 (1 이상). 창 크기 = 1/zoom */
+  zoom: number;
+  /** 영역 고정: 대상을 놓친 프레임 비율 (0~1) */
+  lost?: number;
 }
 
 export type TransitionId =
@@ -178,7 +195,7 @@ export interface RecentProject {
   thumbnailPath?: string;
 }
 
-export type JobKind = 'media' | 'subtitle' | 'render';
+export type JobKind = 'media' | 'subtitle' | 'render' | 'stabilize';
 
 export interface JobProgress {
   jobId: string;

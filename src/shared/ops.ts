@@ -1,9 +1,10 @@
 // 프로젝트 편집 동작 (순수 함수, Immer draft 에 직접 적용). 렌더러 store 와 테스트에서 사용.
 // 클립을 옮기거나 지우거나 자를 때 전환·자막이 같이 따라가도록 여기서 한 번에 처리한다.
-import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, MusicSettings, Project, Speed, Subtitle, SubtitleStyle, TransitionId, VideoClip } from './types';
+import type { ColorAdjust, FilterId, FitMode, MediaItem, MusicClip, MusicSettings, Project, Speed, Stabilize, Subtitle, SubtitleStyle, TransitionId, VideoClip } from './types';
 import { IMAGE_DEFAULT_DURATION, MIN_CLIP_LENGTH } from './types';
 import { clipLength, isImageClip, layoutMusic, layoutTimeline, subtitleRange } from './timeline';
 import { PRESET_BY_ID } from './subtitles';
+import { STAB_MAX_ZOOM } from './stabilize';
 
 export const newId = (): string => globalThis.crypto.randomUUID();
 
@@ -180,6 +181,19 @@ export function setTransition(p: Project, afterClipIds: string[], type: Transiti
 export function setFitMode(p: Project, clipId: string, mode: FitMode): void {
   const c = p.videoTrack.find((x) => x.id === clipId);
   if (c) c.fitMode = mode;
+}
+
+/** 흔들림 줄이기·영역 고정 넣기 / null 이면 끄기 (PRD 13장 #16) */
+export function setStabilize(p: Project, clipId: string, stabilize: Stabilize | null): void {
+  const c = p.videoTrack.find((x) => x.id === clipId);
+  if (!c || isImageClip(c)) return;
+  if (stabilize) c.stabilize = stabilize;
+  else delete c.stabilize;
+}
+
+export function setStabilizeZoom(p: Project, clipId: string, zoom: number): void {
+  const st = p.videoTrack.find((x) => x.id === clipId)?.stabilize;
+  if (st) st.zoom = Math.min(STAB_MAX_ZOOM, Math.max(1, Math.round(zoom * 100) / 100));
 }
 
 /**

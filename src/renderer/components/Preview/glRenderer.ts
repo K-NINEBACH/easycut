@@ -6,6 +6,8 @@ export interface SourceParams {
   /** 0 = 흐린 배경, 1 = 검은 배경, 2 = 꽉 채우기 */
   fit: number;
   lut: boolean;
+  /** 흔들림 줄이기·영역 고정 창. 없으면 화면 전체 */
+  crop?: { cx: number; cy: number; s: number };
 }
 
 export interface DrawParams {
@@ -45,7 +47,7 @@ export class GlRenderer {
 
     for (const n of [
       'uTexA', 'uTexB', 'uLutA', 'uLutB', 'uHasA', 'uHasB', 'uLutOnA', 'uLutOnB', 'uSizeA', 'uSizeB',
-      'uFitA', 'uFitB', 'uOut', 'uTrans', 'uProg', 'uLutSize'
+      'uFitA', 'uFitB', 'uCropA', 'uCropB', 'uOut', 'uTrans', 'uProg', 'uLutSize'
     ]) {
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     }
@@ -99,11 +101,13 @@ export class GlRenderer {
       gl.uniform2f(u.uSizeA, p.a.width, p.a.height);
       gl.uniform1i(u.uFitA, p.a.fit);
       gl.uniform1i(u.uLutOnA, p.a.lut ? 1 : 0);
+      gl.uniform3f(u.uCropA, p.a.crop?.cx ?? 0.5, p.a.crop?.cy ?? 0.5, p.a.crop?.s ?? 1);
     }
     if (p.b) {
       gl.uniform2f(u.uSizeB, p.b.width, p.b.height);
       gl.uniform1i(u.uFitB, p.b.fit);
       gl.uniform1i(u.uLutOnB, p.b.lut ? 1 : 0);
+      gl.uniform3f(u.uCropB, p.b.crop?.cx ?? 0.5, p.b.crop?.cy ?? 0.5, p.b.crop?.s ?? 1);
     }
     gl.uniform1i(u.uTrans, p.transition);
     gl.uniform1f(u.uProg, p.progress);

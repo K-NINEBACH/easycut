@@ -6,6 +6,7 @@ import Timeline from '../components/Timeline/Timeline';
 import FileDropZone from '../components/FileDropZone';
 import MissingMediaDialog from '../components/MissingMediaDialog';
 import ExportDialog from '../components/Export/ExportDialog';
+import StabilizeDialog from '../components/Panel/StabilizeDialog';
 import ShortcutsDialog from '../components/Help/ShortcutsDialog';
 import Tour, { useFirstRunTour } from '../components/Help/Tour';
 import { getProject } from '../store/project';
@@ -32,6 +33,7 @@ export default function EditorScreen(): JSX.Element {
       <FileDropZone />
       <MissingMediaDialog />
       <ExportDialog />
+      <StabilizeDialog />
       <ShortcutsDialog />
       <Tour />
     </div>

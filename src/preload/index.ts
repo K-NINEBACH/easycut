@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import { IpcChannel, type AppInfo, type ImportResult, type UpdateReady, type WaveformData } from '@shared/ipc';
+import { IpcChannel, type AppInfo, type ImportResult, type StabilizeRequest, type UpdateReady, type WaveformData } from '@shared/ipc';
 import type { JobDone, JobProgress, MediaItem, Project, RecentProject, RenderOptions } from '@shared/types';
 
 function subscribe<T>(channel: string, cb: (e: T) => void): () => void {
@@ -64,6 +64,10 @@ const api = {
     /** 저장 위치를 고르게 한 뒤 저장. 취소하면 null */
     saveSrt: (name: string, content: string): Promise<string | null> =>
       ipcRenderer.invoke(IpcChannel.SubtitleSaveSrt, name, content)
+  },
+  stabilize: {
+    /** 결과는 jobs.onDone 의 result (Stabilize) */
+    analyze: (req: StabilizeRequest): Promise<{ jobId: string }> => ipcRenderer.invoke(IpcChannel.StabilizeAnalyze, req)
   },
   jobs: {
     cancel: (jobId: string): Promise<void> => ipcRenderer.invoke(IpcChannel.JobsCancel, jobId),
